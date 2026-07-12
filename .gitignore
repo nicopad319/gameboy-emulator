@@ -1,0 +1,16 @@
+# Build output
+build/
+
+# Visual Studio / MSBuild cache
+.vs/
+
+# VS Code workspace settings (ignore by default, allow specific files below)
+.vscode/*
+!.vscode/launch.json
+!.vscode/settings.json
+
+# Compiled artifacts (safety net, in case anything builds outside build/)
+*.obj
+*.pdb
+*.exe
+*.ilk
