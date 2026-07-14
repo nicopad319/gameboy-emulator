@@ -4,7 +4,6 @@ class Cartridge;
 class WRAM;
 class IORegisters;
 class VRAM;
-class Unusable;
 class HRAM;
 class IERegister;
 class OAM;

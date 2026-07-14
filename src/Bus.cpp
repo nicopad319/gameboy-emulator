@@ -3,7 +3,6 @@
 #include "gb/WRAM.h"
 #include "gb/IORegisters.h"
 #include "gb/VRAM.h"
-#include "gb/Unusable.h"
 #include "gb/HRAM.h"
 #include "gb/IERegister.h"
 #include "gb/OAM.h"
@@ -23,13 +22,13 @@ uint8_t Bus::read(uint16_t address) {
     } else if (address < 0xFEA0) {
         return _oam->read(address);
     } else if (address < 0xFF00) { //unusable memory
-        return 0xFF; //TODO: revisit for OAM corruption accuracy once PPU modes exist
+        return 0xFF;
     } else if (address < 0xFF80) {
         return _ioRegisters->read(address);
     } else if (address < 0xFFFF) {
         return _hram->read(address);
     } else {
-        return _ieRegister->read(address);
+        return _ieRegister->read();
     }
 }
 
@@ -47,13 +46,13 @@ void Bus::write(uint16_t address, uint8_t value) {
     } else if (address < 0xFEA0) {
         _oam->write(address, value);
     } else if (address < 0xFF00) { //unusable memory
-        return; //TODO: revisit for OAM corruption accuracy once PPU modes exist
+        return;
     } else if (address < 0xFF80) {
         _ioRegisters->write(address, value);
     } else if (address < 0xFFFF) {
         _hram->write(address, value);
     } else {
-        _ieRegister->write(address, value);
+        _ieRegister->write(value);
     }
 }
 
