@@ -11,4 +11,5 @@ public:
 
 private:
     std::array<uint8_t, 0x2000> _vram; //8kb of ram (0x9FFF - 0x8000 + 1 = 0x2000)
+    PPU* _ppu = nullptr;
 };

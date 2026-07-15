@@ -11,4 +11,5 @@ public:
 
 private:
     std::array<uint8_t, 0x00A0> _oam; //160 bytes of ram (0xFE9F - 0xFE00 + 1 = 0x00A0)
+    PPU* _ppu = nullptr;
 };

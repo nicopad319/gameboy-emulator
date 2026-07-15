@@ -32,3 +32,12 @@ The bit math for combining bytes (read16): you have two separate uint8_t values 
 
 The inverse for write16: splitting a uint16_t back into its component bytes — the low byte is the value's low 8 bits (extracted via mask or truncating cast), the high byte is the value shifted right by 8 bits.
 
+CARTRIDGE
+
+0x0134–0x0143: Title (the game's name in ASCII)
+
+byte 0x0147 = CRITICAL BYTE, tells you what MBC chip it uses (if any) Ex. 0x00 = no MBC (32KB ROM only), 0x01 = MBC1, 0x03 = MBC1+RAM+battery, and so on.
+
+0x0148: ROM size — encodes how many ROM banks exist (and thus total ROM size)
+
+0x0149: RAM size — how much external (cartridge) RAM, if any

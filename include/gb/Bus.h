@@ -22,7 +22,6 @@ private:
     WRAM* _wram;
     IORegisters* _ioRegisters;
     VRAM* _vram;
-    Unusable* _unusable;
     HRAM* _hram;
     IERegister* _ieRegister;
     OAM* _oam;
