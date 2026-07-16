@@ -1,11 +1,31 @@
-#include "gb/Bus.h"
-#include "gb/Cartridge.h"
-#include "gb/WRAM.h"
-#include "gb/IORegisters.h"
-#include "gb/VRAM.h"
-#include "gb/HRAM.h"
-#include "gb/IERegister.h"
-#include "gb/OAM.h"
+#include "Bus.h"
+#include "Cartridge.h"
+#include "WRAM.h"
+#include "IORegisters.h"
+#include "VRAM.h"
+#include "HRAM.h"
+#include "IERegister.h"
+#include "OAM.h"
+
+
+Bus::Bus(Cartridge* cartridge, 
+           WRAM* wram,
+           IORegisters* ioRegisters,
+           VRAM* vram,
+           HRAM* hram,
+           IERegister* ieRegister,
+           OAM* oam)
+            : _cartridge(cartridge),
+            _wram(wram),
+            _ioRegisters(ioRegisters),
+            _vram(vram),
+            _hram(hram),
+            _ieRegister(ieRegister),
+            _oam(oam),
+            _cycles(0) // Initialize cycles to 0
+{
+    // Constructor body can be empty since we are using an initializer list
+}
 
 
 uint8_t Bus::read(uint16_t address) {

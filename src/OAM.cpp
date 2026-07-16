@@ -1,6 +1,11 @@
 #include "OAM.h"
 #include "PPU.h" // Include the PPU header for access to PPU class
 
+OAM::OAM(PPU* ppu) : _ppu(ppu) {
+    // Constructor to initialize the PPU pointer
+    // This allows OAM to check the PPU's current mode for locking logic
+}
+
 uint8_t OAM::read(uint16_t address) {
     // --- OAM LOCKING LOGIC ---
     if (_ppu->getCurrentMode() == 2 || _ppu->getCurrentMode() == 3) {
