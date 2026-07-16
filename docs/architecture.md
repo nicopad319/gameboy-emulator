@@ -41,3 +41,43 @@ byte 0x0147 = CRITICAL BYTE, tells you what MBC chip it uses (if any) Ex. 0x00 =
 0x0148: ROM size — encodes how many ROM banks exist (and thus total ROM size)
 
 0x0149: RAM size — how much external (cartridge) RAM, if any
+
+
+--CPU--
+CPU's job is simply to fetch bytes from Bus and manipulate its internal registers
+Think of registers as the CPU’s ultra-fast, local scratchpad memory
+
+1. The 8-Bit General Purpose Registers (B, C, D, E, H, L)
+These are used to store temporary variables, counters, and loop values during math or data-moving operations.The Pairs: The CPU can link them together to form 16-bit registers (BC, DE, HL).
+
+The Special Pointer (HL): While BC and DE are mostly for data, HL stands for High/Low. It is specifically designed to act as a 16-bit memory pointer. Many Game Boy instructions tell the CPU to read or write data to the memory address currently held inside HL (often written as [HL] or (HL) in assembly).
+
+2. The Accumulator (A): The A register is the star of the show. Almost all 8-bit arithmetic and logical operations must involve the accumulator. If you want to add two numbers, one of them has to be in A.The result of that addition is automatically saved right back into A.
+Example instruction: ADD A, B means: "Take the value in A, add the value in B, and save the result into A.
+
+3. The Flags Register (F): The F register doesn't hold data numbers. Instead, it acts as a status board. Whenever the CPU does a math calculation, logical operation, or bit shift, it updates individual bits (flags) in F to describe what just happened. Subsequent instructions (like conditional jumps) read these flags to make decisions (e.g., "Jump to this loop if the last subtraction resulted in zero"). On the Game Boy, only the top 4 bits of F are used:
+
+Bit    Flag Name    Symbol  What it means
+7      Zero Flag      Z     Set to 1 if the result of the last operation was exactly 0. Set to 0 otherwise.
+6     Subtract Flag   N     Set to 1 if the last operation was a subtraction/decrease. Set to 0 if it was an addition/increase. (The CPU uses this to adjust decimal numbers later)
+5   Half-Carry Flag   H     Set to 1 if an addition carried a value over from Bit 3 to Bit 4 (the lower 4 bits overflowed). Crucial for Binary Coded Decimal (BCD) math.
+4      Carry Flag     C     Set to 1 if an addition overflowed past Bit 7 (e.g., 255 + 1), or if a subtraction required a borrow below 0. Also used in bit-shifting.
+3-0     Unused        -     Always hardwired to 0
+
+4. Special 16-Bit Registers (PC and SP): These two do not share 8-bit pairs because they have very specific, automated roles in hardware:
+Program Counter (PC): This holds the 16-bit memory address of the next instruction the CPU needs to execute. Every time the CPU fetches an instruction byte from your memory bus, PC automatically increments (PC++) to point to the next byte.
+Stack Pointer (SP): This points to a temporary storage area in the Game Boy's High RAM called the "Stack." When your CPU jumps to a function (a CALL instruction), it pushes the current PC address onto the stack so it knows how to return later. SP tracks the top of this memory pile.
+
+Bit manipulation:
+
+the mask is the bit position written in hex
+Ex. the mask for bit 6 is (2^6 = 64) = 0x40.
+the mask for bit 7 is (2^7 = 128) = 0x80.
+inverse mask is just ~0x...
+
+getting a bit -> & with the mask. Getting bit 7: f = f & 0x80;
+setting a bit (force it to 1) -> | with the mask. Setting bit 7: f = f | 0x80;
+clearing a bit (force it to 0) -> & with the inverted mask. Clearing bit 7: f = f & ~0x80;
+
+
+
