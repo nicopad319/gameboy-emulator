@@ -49,7 +49,7 @@ bool Cartridge::load(const std::string& path) {
     }
 
     // 4.5 verify that the cartridge type is supported (for now, only support 0x00)
-    if (_cartridgeType != 0x00) { // unsupported cartridge type for now
+    if (_cartridgeType != 0x00 && _cartridgeType != 0x01) { // 0x01 temporarily added to support the 01-special.gb test ROM, which is a MBC1 cartridge
         std::cerr << "Unsupported cartridge type: 0x" << std::hex << static_cast<int>(_cartridgeType) << std::endl;
         return false;
     }

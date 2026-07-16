@@ -9,11 +9,15 @@
 #include "VRAM.h"
 #include "WRAM.h"
 #include <string>
+#include <cstdint>
 
 class GameBoy {
 public:
     GameBoy(); //constructs everything (is the root) so doesn't need to take in any parameters
     bool loadROM(const std::string& path);
+
+    uint8_t read(uint16_t address);
+    void write(uint16_t address, uint8_t value);
 
 private:
     PPU _ppu; //depends on nothing (is a stub) must be declared first

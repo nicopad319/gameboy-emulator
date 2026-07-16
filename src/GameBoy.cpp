@@ -12,3 +12,11 @@ GameBoy::GameBoy()
 bool GameBoy::loadROM(const std::string& path) {
     return _cartridge.load(path); // Load the ROM into the cartridge
 }
+
+uint8_t GameBoy::read(uint16_t address) {
+    return _bus.read(address);
+}
+
+void GameBoy::write(uint16_t address, uint8_t value) {
+    _bus.write(address, value);
+}
