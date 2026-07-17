@@ -8,6 +8,7 @@
 #include "PPU.h"
 #include "VRAM.h"
 #include "WRAM.h"
+#include "CPU.h"
 #include <string>
 #include <cstdint>
 
@@ -19,6 +20,8 @@ public:
     uint8_t read(uint16_t address);
     void write(uint16_t address, uint8_t value);
 
+    int step();
+
 private:
     PPU _ppu; //depends on nothing (is a stub) must be declared first
     Cartridge _cartridge;
@@ -29,4 +32,5 @@ private:
     VRAM _vram; //depends on PPU so must be declared after it
     OAM _oam; //also depends on PPU
     Bus _bus; //depends on everything so must be declared last
+    CPU _cpu; //holds a bus so must come after bus
 };

@@ -16,6 +16,11 @@ add_executable(gbemu
     src/Cartridge.cpp
     src/PPU.cpp
     src/GameBoy.cpp
+    src/CPU.cpp
 )
 
 target_include_directories(gbemu PRIVATE include/gb)
+
+if (MSVC)
+    target_compile_options(gbemu PRIVATE /W4 /WX)
+endif()

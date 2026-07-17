@@ -2,9 +2,13 @@
 #include <cstdint>
 
 
+class Bus;
+
 class CPU {
 public:
-    CPU();
+    CPU(Bus& bus);
+
+    void reset();
     // Getter methods for 8-bit registers
     uint8_t getA() const;
     uint8_t getF() const;
@@ -50,6 +54,8 @@ public:
     void setFlagN(bool value);
     void setFlagH(bool value);
     void setFlagC(bool value);
+
+    int step();
 private:
     uint8_t _a; // Accumulator register
     uint8_t _f; // Flags register
@@ -71,4 +77,10 @@ private:
     static constexpr uint8_t FLAG_N = 0x40;
     static constexpr uint8_t FLAG_H = 0x20;
     static constexpr uint8_t FLAG_C = 0x10;
+
+    Bus& _bus;
+
+    //method needed for opcode logic
+    uint8_t fetchByte(); 
+    int execute(uint8_t opcode);
 };
