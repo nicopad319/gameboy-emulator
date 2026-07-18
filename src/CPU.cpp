@@ -154,6 +154,72 @@ uint8_t CPU::fetchByte() {
 int CPU::execute(uint8_t opcode) {
     switch (opcode) {
         case 0x00: return 4; 
+        //8 bit loads
+        case 0x40: setB(getB()); return 4;
+        case 0x41: setB(getC()); return 4;
+        case 0x42: setB(getD()); return 4;
+        case 0x43: setB(getE()); return 4;
+        case 0x44: setB(getH()); return 4;
+        case 0x45: setB(getL()); return 4;
+        case 0x46: setB(_bus.read(getHL())); return 8;
+        case 0x47: setB(getA()); return 4;
+        case 0x48: setC(getB()); return 4; 
+        case 0x49: setC(getC()); return 4;
+        case 0x4A: setC(getD()); return 4;
+        case 0x4B: setC(getE()); return 4;
+        case 0x4C: setC(getH()); return 4;
+        case 0x4D: setC(getL()); return 4;
+        case 0x4E: setC(_bus.read(getHL())); return 8;
+        case 0x4F: setC(getA()); return 4;
+        case 0x50: setD(getB()); return 4; 
+        case 0x51: setD(getC()); return 4;
+        case 0x52: setD(getD()); return 4;
+        case 0x53: setD(getE()); return 4;
+        case 0x54: setD(getH()); return 4;
+        case 0x55: setD(getL()); return 4;
+        case 0x56: setD(_bus.read(getHL())); return 8;
+        case 0x57: setD(getA()); return 4;
+        case 0x58: setE(getB()); return 4;
+        case 0x59: setE(getC()); return 4;
+        case 0x5A: setE(getD()); return 4;
+        case 0x5B: setE(getE()); return 4;
+        case 0x5C: setE(getH()); return 4;
+        case 0x5D: setE(getL()); return 4;
+        case 0x5E: setE(_bus.read(getHL())); return 8;
+        case 0x5F: setE(getA()); return 4;
+        case 0x60: setH(getB()); return 4;
+        case 0x61: setH(getC()); return 4;
+        case 0x62: setH(getD()); return 4;
+        case 0x63: setH(getE()); return 4;
+        case 0x64: setH(getH()); return 4;
+        case 0x65: setH(getL()); return 4;
+        case 0x66: setH(_bus.read(getHL())); return 8;
+        case 0x67: setH(getA()); return 4;
+        case 0x68: setL(getB()); return 4;
+        case 0x69: setL(getC()); return 4;
+        case 0x6A: setL(getD()); return 4;
+        case 0x6B: setL(getE()); return 4;
+        case 0x6C: setL(getH()); return 4;
+        case 0x6D: setL(getL()); return 4;
+        case 0x6E: setL(_bus.read(getHL())); return 8;
+        case 0x6F: setL(getA()); return 4;
+        case 0x70: _bus.write(getHL(), getB()); return 8;
+        case 0x71: _bus.write(getHL(), getC()); return 8;
+        case 0x72: _bus.write(getHL(), getD()); return 8;
+        case 0x73: _bus.write(getHL(), getE()); return 8;
+        case 0x74: _bus.write(getHL(), getH()); return 8;
+        case 0x75: _bus.write(getHL(), getL()); return 8;
+        //skip 0x76 HALT for now
+        case 0x77: _bus.write(getHL(), getA()); return 8;
+        case 0x78: setA(getB()); return 4;
+        case 0x79: setA(getC()); return 4;
+        case 0x7A: setA(getD()); return 4;
+        case 0x7B: setA(getE()); return 4;
+        case 0x7C: setA(getH()); return 4;
+        case 0x7D: setA(getL()); return 4;
+        case 0x7E: setA(_bus.read(getHL())); return 8;
+        case 0x7F: setA(getA()); return 4;
+        
         default: 
             std::cerr << "Unimplemented opcode 0x"
             << std::hex << std::setw(2) << std::setfill('0')

@@ -80,4 +80,9 @@ setting a bit (force it to 1) -> | with the mask. Setting bit 7: f = f | 0x80;
 clearing a bit (force it to 0) -> & with the inverted mask. Clearing bit 7: f = f & ~0x80;
 
 
+Implementing opcodes. 
+Starting with 8 bit loads (0x40 - 0x7F). 
+Ex. Opcode at 0x41 = (LD B, C), 1, 4 --> load C onto B, 4 cycles --> case 0x41: setB(get(C)); return = 4;
+
+
 

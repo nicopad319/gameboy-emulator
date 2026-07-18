@@ -21,28 +21,29 @@
 
 // }
 
-// #include <iostream>
-// #include "Cartridge.h"
-// #include "PPU.h"
-// #include "WRAM.h"
-// #include "IORegisters.h"
-// #include "VRAM.h"
-// #include "HRAM.h"
-// #include "IERegister.h"
-// #include "OAM.h"
-// #include "CPU.h"
-// #include "Bus.h"
+#include <iostream>
+#include "Cartridge.h"
+#include "PPU.h"
+#include "WRAM.h"
+#include "IORegisters.h"
+#include "VRAM.h"
+#include "HRAM.h"
+#include "IERegister.h"
+#include "OAM.h"
+#include "CPU.h"
+#include "Bus.h"
+#include "Bus.h"
 
 
-// bool check(const std::string& label, uint16_t actual, uint16_t expected) {
-//     if (actual == expected) {
-//         std::cout << "PASS: " << label << std::endl;
-//         return true;
-//     } else {
-//         std::cout << "FAIL: " << label << " (got 0x" << actual << ", expected 0x" << expected << ")." << std::endl;
-//         return false;
-//     }
-// }
+bool check(const std::string& label, uint16_t actual, uint16_t expected) {
+    if (actual == expected) {
+        std::cout << "PASS: " << label << std::endl;
+        return true;
+    } else {
+        std::cout << "FAIL: " << label << " (got 0x" << actual << ", expected 0x" << expected << ")." << std::endl;
+        return false;
+    }
+}
 
 
 // int main() {
@@ -79,28 +80,49 @@
 // }
 
 
-int main(int argc, char* argv[]) {
-    // argc = number of arguments (including the program name itself)
-    // argv[0] = program name, argv[1] = first real argument
-    if (argc < 2) {
-        std::cerr << "Usage: gbemu <rom-path>" << std::endl;
-        return 1;
-    }
-    std::string romPath = argv[1];
-    GameBoy gb;
-    if (!gb.loadROM(romPath)) {
-        std::cerr << "Failed to load ROM: " << romPath << std::endl;
-        return 1;
-    }
-    try {
-        std::cout << std::hex
-          << "0x0100: " << static_cast<int>(gb.read(0x0100)) << "\n"
-          << "0x0101: " << static_cast<int>(gb.read(0x0101)) << "\n"
-          << "0x0104: " << static_cast<int>(gb.read(0x0104)) << std::endl;
-        int cycles = gb.step();
-        std::cout << "stepped OK, cycles = " << std::dec << cycles << std::endl;
-    } catch (const std::exception& e) {
-        std::cout << "caught: " << e.what() << std::endl;
-    }
-    return 0;
+// int main(int argc, char* argv[]) {
+//     // argc = number of arguments (including the program name itself)
+//     // argv[0] = program name, argv[1] = first real argument
+//     if (argc < 2) {
+//         std::cerr << "Usage: gbemu <rom-path>" << std::endl;
+//         return 1;
+//     }
+//     std::string romPath = argv[1];
+//     GameBoy gb;
+//     if (!gb.loadROM(romPath)) {
+//         std::cerr << "Failed to load ROM: " << romPath << std::endl;
+//         return 1;
+//     }
+//     try {
+//         std::cout << std::hex
+//           << "0x0100: " << static_cast<int>(gb.read(0x0100)) << "\n"
+//           << "0x0101: " << static_cast<int>(gb.read(0x0101)) << "\n"
+//           << "0x0104: " << static_cast<int>(gb.read(0x0104)) << std::endl;
+//         int cycles = gb.step();
+//         std::cout << "stepped OK, cycles = " << std::dec << cycles << std::endl;
+//     } catch (const std::exception& e) {
+//         std::cout << "caught: " << e.what() << std::endl;
+//     }
+//     return 0;
+// }
+
+
+int main() {
+    PPU _ppu;
+    Cartridge cart;
+    WRAM wram;
+    IORegisters io;
+    VRAM vram(&_ppu);
+    HRAM hram;
+    IERegister ie;
+    OAM oam(&_ppu);
+    Bus bus(&cart, &wram, &io, &vram, &hram, &ie, &oam);
+    CPU cpu(bus);
+
+    cpu.reset(); 
+    cpu.setC(0x42);
+    int cycles = cpu.execute(0x41);
+    check("LD B,C copies C to B", cpu.getB(), 0x42);
+    check("LD B,C takes 4 cycles", cycles, 4);
 }
+

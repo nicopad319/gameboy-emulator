@@ -56,6 +56,8 @@ public:
     void setFlagC(bool value);
 
     int step();
+    //moved from private to public for testing purposes
+    int execute(uint8_t opcode);
 private:
     uint8_t _a; // Accumulator register
     uint8_t _f; // Flags register
@@ -82,5 +84,4 @@ private:
 
     //method needed for opcode logic
     uint8_t fetchByte(); 
-    int execute(uint8_t opcode);
 };

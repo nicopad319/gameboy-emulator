@@ -31,3 +31,6 @@ per-register IORegisters behavior, and the "should VRAM/OAM live inside PPU?" qu
 
 Session 3.5 (7/15/26):
 Productive day. Finished milestone 2, learned hex and binary and bitwise operation for good this time, learned the structure of the CPU (read architecture.md), and implemented CPU.h.
+
+Session 4 (7/16/26):
+Finished wiring the CPU, ran a second smoke test and implemented a test function (check) to make sure everything works. Implemented the very first opcode (NOP) and a default in the switch. 
