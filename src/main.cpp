@@ -35,7 +35,7 @@
 #include "Bus.h"
 
 
-bool check(const std::string& label, uint16_t actual, uint16_t expected) {
+bool check(const std::string& label, int actual, int expected) {
     if (actual == expected) {
         std::cout << "PASS: " << label << std::endl;
         return true;
@@ -107,22 +107,59 @@ bool check(const std::string& label, uint16_t actual, uint16_t expected) {
 // }
 
 
-int main() {
+struct TestSystem {
     PPU _ppu;
-    Cartridge cart;
-    WRAM wram;
-    IORegisters io;
-    VRAM vram(&_ppu);
-    HRAM hram;
-    IERegister ie;
-    OAM oam(&_ppu);
-    Bus bus(&cart, &wram, &io, &vram, &hram, &ie, &oam);
-    CPU cpu(bus);
+    Cartridge _cartridge;
+    WRAM _wram;
+    HRAM _hram;
+    IORegisters _ioRegisters;
+    IERegister _ieRegister;
+    VRAM _vram;
+    OAM _oam;
+    Bus _bus;
+    CPU _cpu;
 
-    cpu.reset(); 
-    cpu.setC(0x42);
-    int cycles = cpu.execute(0x41);
-    check("LD B,C copies C to B", cpu.getB(), 0x42);
-    check("LD B,C takes 4 cycles", cycles, 4);
+    TestSystem()          // ← inside the braces
+        : _vram(&_ppu),
+          _oam(&_ppu),
+          _bus(&_cartridge, &_wram, &_ioRegisters, &_vram, &_hram, &_ieRegister, &_oam),
+          _cpu(_bus)
+    {}
+};                        // ← struct ends after the constructor
+
+void testRegisterLoads() {
+    TestSystem sys;
+    sys._cpu.setC(0x42);
+    int cycles = sys._cpu.execute(0x41);
+    check("LD B,C copies C into B", sys._cpu.getB(), 0x42);   // the actual effect
+    check("LD B,C takes 4 cycles", cycles, 4);                 // the timing
+    sys._cpu.reset();
+    sys._cpu.setA(0x42);
+    cycles = sys._cpu.execute(0x57);
+    check("LD D,A copies A into D", sys._cpu.getD(), 0x42);
+    check("LD D,A takes 4 cycles", cycles, 4);
+    sys._cpu.reset();
+    sys._cpu.setE(0x42);
+    cycles = sys._cpu.execute(0x6B);
+    check("LD L,E copies E into L", sys._cpu.getL(), 0x42);
+    check("LD L,E takes 4 cycles", cycles, 4);
+}
+
+void testHLLoads() {
+    TestSystem sys;
+    sys._cpu.setHL(0xC000); // point HL at writable WRAM
+    sys._cpu.setB(0x99); // value to store
+    int cycles = sys._cpu.execute(0x70); // LD (HL), B — stores B to memory[0xC000]
+    check("LD (HL) B took 8 cycles", cycles, 8);
+
+    cycles = sys._cpu.execute(0x4E); // LD C, (HL) — reads memory[0xC000] into C
+    check("LD C,(HL) round-trips value", sys._cpu.getC(), 0x99);
+    check("LD C,(HL) takes 8 cycles", cycles, 8);
+}
+
+int main() {
+    testRegisterLoads();
+    testHLLoads();
+    return 0;
 }
 
