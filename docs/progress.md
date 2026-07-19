@@ -40,3 +40,7 @@ Short session today. implemented 8 bit load opcodes, and started writing a TestS
 
 Session 6 (7/18/26):
 Implemented TestSystem struct and a testRegisterLoads() method and a testHLLoads() method. 8-bit loads are all done and tested. onto 16-bit loads
+
+6.5: did 16 bit loads, and implemented arithmetic logic including ADD, SUB, CP, AND, OR, XOR. roughly 25% done with opcodes. testing as I go to make sure that it passes blargg's test roms hopefully first try. green flags all around so far. will try to be done with opcodes either tomorrow or two days from now.
+
+Session 7 (7/19/26):

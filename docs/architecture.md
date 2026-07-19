@@ -118,3 +118,7 @@ logical operators (AND, OR, XOR):
 flags C and N always 0!!
 flagZ(result == 0)
 flag H is always on for AND, always off for OR and XOR
+
+
+inc8/dec8:
+carry flag is left untouched. so only set Flags Z, N, H

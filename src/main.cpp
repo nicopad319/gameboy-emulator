@@ -294,7 +294,7 @@ void testXor() {
     sys._cpu.setA(0xFF);
     sys._cpu.setB(0xFF);
     int cycles = sys._cpu.execute(0xA8);
-    check("and result is correct", sys._cpu.getA(), 0x00);
+    check("xor result is correct", sys._cpu.getA(), 0x00);
     check("flagZ correct", sys._cpu.getFlagZ(), true);
     check("flagN correct", sys._cpu.getFlagN(), false);
     check("flagH correct", sys._cpu.getFlagH(), false);
@@ -307,12 +307,48 @@ void testOr() {
     sys._cpu.setA(0x0F);
     sys._cpu.setB(0xF0);
     int cycles = sys._cpu.execute(0xB0);
-    check("and result is correct", sys._cpu.getA(), 0xFF);
+    check("or result is correct", sys._cpu.getA(), 0xFF);
     check("flagZ correct", sys._cpu.getFlagZ(), false);
     check("flagN correct", sys._cpu.getFlagN(), false);
     check("flagH correct", sys._cpu.getFlagH(), false);
     check("flagC correct", sys._cpu.getFlagC(), false);
     check("correct amount of cycles", cycles, 4);
+}
+
+void testIncDec() {
+    TestSystem sys;
+    // C stays set
+    sys._cpu.setA(0x05);
+    sys._cpu.setFlagC(true);       // C = 1 before
+    sys._cpu.execute(0x3C);        // INC A
+    check("INC leaves C set", sys._cpu.getFlagC(), true);   // still 1
+
+    // C stays clear
+    sys._cpu.reset();              // (reset clears flags)
+    sys._cpu.setA(0x05);
+    sys._cpu.setFlagC(false);      // C = 0 before
+    sys._cpu.execute(0x3C);
+    check("INC leaves C clear", sys._cpu.getFlagC(), false); // still 0
+    sys._cpu.reset();
+    sys._cpu.setA(0xFF);
+    sys._cpu.execute(0x3C);
+    check("c1 Wrap around case", sys._cpu.getA(), 0x00);
+    check("c1 FlagZ correct", sys._cpu.getFlagZ(), true);
+    check("c1 FlagN correct", sys._cpu.getFlagN(), false);
+    check("c1 FlagH correct", sys._cpu.getFlagH(), true);
+    sys._cpu.reset();
+    sys._cpu.setA(0x00);
+    sys._cpu.execute(0x3D);
+    check("c2 Wrap around case", sys._cpu.getA(), 0xFF);
+    check("c2 FlagZ correct", sys._cpu.getFlagZ(), false);
+    check("c2 FlagN correct", sys._cpu.getFlagN(), true);
+    check("c2 FlagH correct", sys._cpu.getFlagH(), true);
+
+    sys._cpu.reset();
+    sys._cpu.setA(0xFF);
+    sys._cpu.setFlagC(false);      // C cleared
+    sys._cpu.execute(0x3C);        // INC A → 0x00, overflow!
+    check("INC 0xFF leaves C untouched (not set by overflow)", sys._cpu.getFlagC(), false);
 }
 int main() {
     // testRegisterLoads();
@@ -322,9 +358,10 @@ int main() {
     // testAdd();
     // testSub();
     // testCp();
-    testAdd();
-    testOr();
-    testXor();
+    // testAdd();
+    // testOr();
+    // testXor();
+    testIncDec();
     return 0;
 }
 

@@ -71,6 +71,9 @@ public:
     void or8(uint8_t value);
     void xor8(uint8_t value);
 
+    uint8_t inc8(uint8_t value);
+    uint8_t dec8(uint8_t value);
+
 
 
 private:

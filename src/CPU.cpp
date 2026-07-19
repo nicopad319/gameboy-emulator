@@ -235,19 +235,60 @@ void CPU::xor8(uint8_t value) {
     setA(result);
 }
 
+uint8_t CPU::inc8(uint8_t value) {
+    uint8_t result = value + 1;
+    setFlagZ(result == 0);
+    setFlagN(false);
+    setFlagH((value & 0x0F) == 0x0F);
+    //flagC is untouched
+    return result;
+}
+
+uint8_t CPU::dec8(uint8_t value) {
+    uint8_t result = value - 1;
+    setFlagZ(result == 0);
+    setFlagN(true);
+    setFlagH((value & 0x0F) == 0x00);
+    //flagC untouched
+    return result;
+}
 
 int CPU::execute(uint8_t opcode) {
     switch (opcode) {
         case 0x00: return 4; //NOP
         case 0x01: setBC(fetchWord()); return 12;
+        case 0x04: setB(inc8(getB())); return 4;
+        case 0x05: setB(dec8(getB())); return 4;
         case 0x08: {
             uint16_t addr = fetchWord(); //safer to call fetchWord first b/c C++ has no specified order for parameters
             _bus.write16(addr, getSP()); //(fetchWord could affect SP if it was called in the same line)
             return 20;
         }
+        case 0x0C: setC(inc8(getC())); return 4;
+        case 0x0D: setC(dec8(getC())); return 4;
         case 0x11: setDE(fetchWord()); return 12;
+        case 0x14: setD(inc8(getD())); return 4;
+        case 0x15: setD(dec8(getD())); return 4;
+        case 0x1C: setE(inc8(getE())); return 4;
+        case 0x1D: setE(dec8(getE())); return 4;
         case 0x21: setHL(fetchWord()); return 12;
+        case 0x24: setH(inc8(getH())); return 4;
+        case 0x25: setH(dec8(getH())); return 4;
+        case 0x2C: setL(inc8(getL())); return 4;
+        case 0x2D: setL(dec8(getL())); return 4;
         case 0x31: setSP(fetchWord()); return 12;
+        case 0x34: {
+            uint8_t v = _bus.read(getHL());
+            _bus.write(getHL(), inc8(v));
+            return 12;
+        }
+        case 0x35: {
+            uint8_t v = _bus.read(getHL());
+            _bus.write(getHL(), dec8(v));
+            return 12;
+        }
+        case 0x3C: setA(inc8(getA())); return 4;
+        case 0x3D: setA(dec8(getA())); return 4;
         //8 bit loads
         case 0x40: setB(getB()); return 4;
         case 0x41: setB(getC()); return 4;
