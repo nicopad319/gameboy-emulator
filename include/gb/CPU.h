@@ -58,6 +58,9 @@ public:
     int step();
     //moved from private to public for testing purposes
     int execute(uint8_t opcode);
+    void push(uint16_t value);
+    uint16_t pop(); 
+    
 private:
     uint8_t _a; // Accumulator register
     uint8_t _f; // Flags register

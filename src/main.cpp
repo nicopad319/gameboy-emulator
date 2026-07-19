@@ -175,10 +175,31 @@ void testHLLoads() {
     check("LD C,(HL) takes 8 cycles", cycles, 8);
 }
 
+void testPushPop() {
+    TestSystem sys;
+    sys._cpu.setSP(0xC100);           //stack in writable WRAM
+    sys._cpu.setBC(0xBEEF);
+    sys._cpu.setAF(0x43FF);
+
+    int cycles = sys._cpu.execute(0xC5);   //PUSH BC
+    check("PUSH BC takes 16 cycles", cycles, 16);
+    check("SP decremented by 2", sys._cpu.getSP(), 0xC0FE);   //0xC100 - 2
+
+    cycles = sys._cpu.execute(0xD1);       //POP DE  (different pair)
+    check("POP DE takes 12 cycles", cycles, 12);
+    check("value round-trips BC->stack->DE", sys._cpu.getDE(), 0xBEEF);
+    check("SP restored", sys._cpu.getSP(), 0xC100);
+
+    cycles = sys._cpu.execute(0xF5); //PUSH AF
+    sys._cpu.execute(0xF1);
+    check("AF round-trips with masking", sys._cpu.getAF(), 0x43F0);
+}
+
 int main() {
     // testRegisterLoads();
     // testHLLoads();
-    test16BitLoads();
+    // test16BitLoads();
+    testPushPop();
     return 0;
 }
 

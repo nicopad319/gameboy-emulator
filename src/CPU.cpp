@@ -157,10 +157,32 @@ uint16_t CPU::fetchWord() {
     return (hi << 8) | lo;
 }
 
+void CPU::push(uint16_t value) {
+    uint8_t high = (value >> 8) & 0xFF;   // high byte of value
+    uint8_t low  = value & 0xFF;          // low byte of value
+    setSP(getSP() - 1);
+    _bus.write(getSP(), high);            // high byte at higher address
+    setSP(getSP() - 1);
+    _bus.write(getSP(), low);             // low byte at lower address
+}
+
+uint16_t CPU::pop() {
+    uint8_t low  = _bus.read(getSP());
+    setSP(getSP() + 1);
+    uint8_t high = _bus.read(getSP());
+    setSP(getSP() + 1);
+    return (high << 8) | low;
+}
+
 int CPU::execute(uint8_t opcode) {
     switch (opcode) {
-        case 0x00: return 4; 
+        case 0x00: return 4; //NOP
         case 0x01: setBC(fetchWord()); return 12;
+        case 0x08: {
+            uint16_t addr = fetchWord(); //safer to call fetchWord first b/c C++ has no specified order for parameters
+            _bus.write16(addr, getSP()); //(fetchWord could affect SP if it was called in the same line)
+            return 20;
+        }
         case 0x11: setDE(fetchWord()); return 12;
         case 0x21: setHL(fetchWord()); return 12;
         case 0x31: setSP(fetchWord()); return 12;
@@ -229,6 +251,15 @@ int CPU::execute(uint8_t opcode) {
         case 0x7D: setA(getL()); return 4;
         case 0x7E: setA(_bus.read(getHL())); return 8;
         case 0x7F: setA(getA()); return 4;
+        case 0xC1: setBC(pop()); return 12;
+        case 0xC5: push(getBC()); return 16;
+        case 0xD1: setDE(pop()); return 12;
+        case 0xD5: push(getDE()); return 16;
+        case 0xE1: setHL(pop()); return 12;
+        case 0xE5: push(getHL()); return 16;
+        case 0xF1: setAF(pop()); return 12;
+        case 0xF5: push(getAF()); return 16;
+        case 0xF9: setSP(getHL()); return 8;
         
         default: 
             std::cerr << "Unimplemented opcode 0x"

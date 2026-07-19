@@ -84,5 +84,23 @@ Implementing opcodes.
 Starting with 8 bit loads (0x40 - 0x7F). 
 Ex. Opcode at 0x41 = (LD B, C), 1, 4 --> load C onto B, 4 cycles --> case 0x41: setB(get(C)); return = 4;
 
+PUSH/POP functions:
+on the Sharp SM83 the stack grows downward. so SP decreases on push and increases on pop. and byte order is little endian so the low byte should go first.
+
+PUSH architecture: 
+
+so for PUSH BC:
+setSP(getSP() - 1); //cant just do SP - 1 since it's a private variable
+write(SP, hi byte);
+setSP(getSP() - 1);
+write(SP, lo byte);
+
+POP architecture;
+so POP BC:
+lo byte = read(SP);
+setSP(getSP() + 1);
+hi byte = read(SP);
+setSP(getSP() + 1);
+
 
 
