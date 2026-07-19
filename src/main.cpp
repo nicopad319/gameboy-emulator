@@ -229,12 +229,61 @@ void testAdd() {
     check("c3 flagC correct", sys._cpu.getFlagC(), false);
 }
 
+void testSub() {
+    TestSystem sys;
+    // Case 1: 0x10 - 0x01 = 0x0F, flags: 0110
+    sys._cpu.setA(0x10);
+    sys._cpu.setB(0x01);
+    int cycles = sys._cpu.execute(0x90); 
+    check("c1 A - b correct", sys._cpu.getA(), 0x0F);
+    check("c1 flagZ correct", sys._cpu.getFlagZ(), false);
+    check("c1 flagN correct", sys._cpu.getFlagN(), true);
+    check("c1 flagH correct", sys._cpu.getFlagH(), true);
+    check("c1 flagC correct", sys._cpu.getFlagC(), false);
+    check("c1 A - b cycles", cycles, 4);
+    // Case 2: 0x20 - 0x20 = 0x00, flags: 1100
+    sys._cpu.reset();
+    sys._cpu.setA(0x20);
+    sys._cpu.setB(0x20);
+    cycles = sys._cpu.execute(0x90); 
+    check("c2 A - b correct", sys._cpu.getA(), 0x00);
+    check("c2 flagZ correct", sys._cpu.getFlagZ(), true);
+    check("c2 flagN correct", sys._cpu.getFlagN(), true);
+    check("c2 flagH correct", sys._cpu.getFlagH(), false);
+    check("c2 flagC correct", sys._cpu.getFlagC(), false);
+    // Case 3: 0x10 + 0x20 = 0xF0, flags: 0111
+    sys._cpu.reset();
+    sys._cpu.setA(0x10);
+    sys._cpu.setB(0x20);
+    cycles = sys._cpu.execute(0x90); 
+    check("c3 A - b correct", sys._cpu.getA(), 0xF0);
+    check("c3 flagZ correct", sys._cpu.getFlagZ(), false);
+    check("c3 flagN correct", sys._cpu.getFlagN(), true);
+    check("c3 flagH correct", sys._cpu.getFlagH(), false);
+    check("c3 flagC correct", sys._cpu.getFlagC(), true);
+}
+
+void testCp() {
+    TestSystem sys;
+    sys._cpu.setA(0x10);
+    sys._cpu.setB(0x20);
+    int cycles = sys._cpu.execute(0xB8); 
+    check("cp leaves a unchanged", sys._cpu.getA(), 0x10);
+    check("flagZ correct", sys._cpu.getFlagZ(), false);
+    check("flagN correct", sys._cpu.getFlagN(), true);
+    check("flagH correct", sys._cpu.getFlagH(), false);
+    check("flagC correct", sys._cpu.getFlagC(), true);
+    check("correct amount of cycles", cycles, 4);
+}
+
 int main() {
     // testRegisterLoads();
     // testHLLoads();
     // test16BitLoads();
     // testPushPop();
-    testAdd();
+    // testAdd();
+    testSub();
+    testCp();
     return 0;
 }
 

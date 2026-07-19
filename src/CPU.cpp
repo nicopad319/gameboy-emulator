@@ -187,6 +187,26 @@ void CPU::add8(uint8_t value) {
     setA(result & 0xFF); //set result after all flag calculations
 }
 
+uint8_t CPU::subFlags(uint8_t value) {   // computes A - value, sets flags, returns result
+    uint8_t a = getA();
+    int result = a - value;
+    setFlagZ((result & 0xFF) == 0);
+    setFlagN(true);
+    setFlagH((a & 0x0F) < (value & 0x0F));
+    setFlagC(a < value);
+    return result & 0xFF;
+}
+
+void CPU::sub8(uint8_t value) {
+    setA(subFlags(value));      // store the result
+}
+
+void CPU::cp8(uint8_t value) {
+    subFlags(value);            // discard the result, keep only the flags
+}
+
+
+
 int CPU::execute(uint8_t opcode) {
     switch (opcode) {
         case 0x00: return 4; //NOP
@@ -273,16 +293,36 @@ int CPU::execute(uint8_t opcode) {
         case 0x85: add8(getL()); return 4;
         case 0x86: add8(_bus.read(getHL())); return 8;
         case 0x87: add8(getA()); return 4;
+
+        //sub8 operations
+        case 0x90: sub8(getB()); return 4;
+        case 0x91: sub8(getC()); return 4;
+        case 0x92: sub8(getD()); return 4;
+        case 0x93: sub8(getE()); return 4;
+        case 0x94: sub8(getH()); return 4;
+        case 0x95: sub8(getL()); return 4;
+        case 0x96: sub8(_bus.read(getHL())); return 8;
+        case 0x97: sub8(getA()); return 4;
+        case 0xB8: cp8(getB()); return 4;
+        case 0xB9: cp8(getC()); return 4;
+        case 0xBA: cp8(getD()); return 4;
+        case 0xBB: cp8(getE()); return 4;
+        case 0xBC: cp8(getH()); return 4;
+        case 0xBD: cp8(getL()); return 4;
+        case 0xBE: cp8(_bus.read(getHL())); return 8;
+        case 0xBF: cp8(getA()); return 4;
         case 0xC1: setBC(pop()); return 12;
         case 0xC5: push(getBC()); return 16;
         case 0xC6: add8(fetchByte()); return 8;
         case 0xD1: setDE(pop()); return 12;
         case 0xD5: push(getDE()); return 16;
+        case 0xD6: sub8(fetchByte()); return 8;
         case 0xE1: setHL(pop()); return 12;
         case 0xE5: push(getHL()); return 16;
         case 0xF1: setAF(pop()); return 12;
         case 0xF5: push(getAF()); return 16;
         case 0xF9: setSP(getHL()); return 8;
+        case 0xFE: cp8(fetchByte()); return 8;
         
         default: 
             std::cerr << "Unimplemented opcode 0x"
