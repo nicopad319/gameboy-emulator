@@ -60,7 +60,9 @@ public:
     int execute(uint8_t opcode);
     void push(uint16_t value);
     uint16_t pop(); 
-    
+    //arithmetic operations
+    void add8(uint8_t value);
+
 private:
     uint8_t _a; // Accumulator register
     uint8_t _f; // Flags register

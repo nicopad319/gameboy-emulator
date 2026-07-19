@@ -103,4 +103,12 @@ hi byte = read(SP);
 setSP(getSP() + 1);
 
 
+arithmetic (flags and stuff)
 
+Z (Zero) — set if the result is 0, cleared otherwise
+N (Subtract) — set if the last op was a subtraction, cleared for addition. For ADD it's always cleared (0). It 
+exists because the DAA instruction later needs to know whether the previous op was add or subtract
+
+C (Carry) — set if the result overflowed past 8 bits, i.e. the true sum exceeded 0xFF. For A + r, carry occurs if A + r > 0xFF.
+
+H (Half-carry) — set if there was a carry from bit 3 into bit 4 — i.e., the low nibbles overflowed. basically if the two lower nibbles are greater than 16 its set

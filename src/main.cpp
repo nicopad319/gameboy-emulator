@@ -195,11 +195,46 @@ void testPushPop() {
     check("AF round-trips with masking", sys._cpu.getAF(), 0x43F0);
 }
 
+void testAdd() {
+    TestSystem sys;
+    // Case 1: 0xFF + 0x01 = 0x00, all flags set except N
+    sys._cpu.setA(0xFF);
+    sys._cpu.setB(0x01);
+    int cycles = sys._cpu.execute(0x80); 
+    check("c1 A + b correct", sys._cpu.getA(), 0x00);
+    check("c1 flagZ correct", sys._cpu.getFlagZ(), true);
+    check("c1 flagN correct", sys._cpu.getFlagN(), false);
+    check("c1 flagH correct", sys._cpu.getFlagH(), true);
+    check("c1 flagC correct", sys._cpu.getFlagC(), true);
+    check("c1 A + b cycles", cycles, 4);
+    // Case 2: 0x08 + 0x08 = 0x10, H set, C clear
+    sys._cpu.reset();
+    sys._cpu.setA(0x08);
+    sys._cpu.setB(0x08);
+    cycles = sys._cpu.execute(0x80); 
+    check("c2 A + b correct", sys._cpu.getA(), 0x10);
+    check("c2 flagZ correct", sys._cpu.getFlagZ(), false);
+    check("c2 flagN correct", sys._cpu.getFlagN(), false);
+    check("c2 flagH correct", sys._cpu.getFlagH(), true);
+    check("c2 flagC correct", sys._cpu.getFlagC(), false);
+    // Case 3: 0x12 + 0x34 = 0x46, all clear
+    sys._cpu.reset();
+    sys._cpu.setA(0x12);
+    sys._cpu.setB(0x34);
+    cycles = sys._cpu.execute(0x80); 
+    check("c3 A + b correct", sys._cpu.getA(), 0x46);
+    check("c3 flagZ correct", sys._cpu.getFlagZ(), false);
+    check("c3 flagN correct", sys._cpu.getFlagN(), false);
+    check("c3 flagH correct", sys._cpu.getFlagH(), false);
+    check("c3 flagC correct", sys._cpu.getFlagC(), false);
+}
+
 int main() {
     // testRegisterLoads();
     // testHLLoads();
     // test16BitLoads();
-    testPushPop();
+    // testPushPop();
+    testAdd();
     return 0;
 }
 
