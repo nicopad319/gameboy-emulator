@@ -350,6 +350,65 @@ void testIncDec() {
     sys._cpu.execute(0x3C);        // INC A → 0x00, overflow!
     check("INC 0xFF leaves C untouched (not set by overflow)", sys._cpu.getFlagC(), false);
 }
+
+void testAdc() {
+    TestSystem sys;
+    sys._cpu.setA(0x0F);
+    sys._cpu.setB(0x00);
+    sys._cpu.setFlagC(true);
+    int cycles = sys._cpu.execute(0x88); 
+    check("c1 A + b + carry correct", sys._cpu.getA(), 0x10);
+    check("c1 flagZ correct", sys._cpu.getFlagZ(), false);
+    check("c1 flagN correct", sys._cpu.getFlagN(), false);
+    check("c1 flagH correct", sys._cpu.getFlagH(), true);
+    check("c1 flagC correct", sys._cpu.getFlagC(), false);
+    check("c1 cycles", cycles, 4);
+    
+    sys._cpu.reset();
+    sys._cpu.setA(0xFF);
+    sys._cpu.setB(0x00);
+    sys._cpu.setFlagC(true);
+    cycles = sys._cpu.execute(0x88); 
+    check("c2 A + b correct", sys._cpu.getA(), 0x00);
+    check("c2 flagZ correct", sys._cpu.getFlagZ(), true);
+    check("c2 flagN correct", sys._cpu.getFlagN(), false);
+    check("c2 flagH correct", sys._cpu.getFlagH(), true);
+    check("c2 flagC correct", sys._cpu.getFlagC(), true);
+    
+    sys._cpu.reset();
+    cycles = sys._cpu.execute(0x8E); 
+    check("HL cycles correct", cycles, 8);
+}
+
+void testSbc() {
+    TestSystem sys;
+    sys._cpu.setA(0x00);
+    sys._cpu.setB(0x00);
+    sys._cpu.setFlagC(true);
+    int cycles = sys._cpu.execute(0x98); 
+    check("c1 A + b + carry correct", sys._cpu.getA(), 0xFF);
+    check("c1 flagZ correct", sys._cpu.getFlagZ(), false);
+    check("c1 flagN correct", sys._cpu.getFlagN(), true);
+    check("c1 flagH correct", sys._cpu.getFlagH(), true);
+    check("c1 flagC correct", sys._cpu.getFlagC(), true);
+    check("c1 cycles", cycles, 4);
+    
+    sys._cpu.reset();
+    sys._cpu.setA(0x10);
+    sys._cpu.setB(0x00);
+    sys._cpu.setFlagC(true);
+    cycles = sys._cpu.execute(0x98); 
+    check("c2 A + b correct", sys._cpu.getA(), 0x0F);
+    check("c2 flagZ correct", sys._cpu.getFlagZ(), false);
+    check("c2 flagN correct", sys._cpu.getFlagN(), true);
+    check("c2 flagH correct", sys._cpu.getFlagH(), true);
+    check("c2 flagC correct", sys._cpu.getFlagC(), false);
+
+    sys._cpu.reset();
+    cycles = sys._cpu.execute(0x9E); 
+    check("HL cycles correct", cycles, 8);
+}
+
 int main() {
     // testRegisterLoads();
     // testHLLoads();
@@ -361,7 +420,9 @@ int main() {
     // testAdd();
     // testOr();
     // testXor();
-    testIncDec();
+    // testIncDec();
+    testAdc();
+    testSbc();
     return 0;
 }
 

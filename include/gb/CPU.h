@@ -74,6 +74,10 @@ public:
     uint8_t inc8(uint8_t value);
     uint8_t dec8(uint8_t value);
 
+    void adc8(uint8_t value);
+    void sbc8(uint8_t value);
+    
+
 
 
 private:

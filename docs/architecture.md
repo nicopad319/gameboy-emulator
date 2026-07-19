@@ -122,3 +122,6 @@ flag H is always on for AND, always off for OR and XOR
 
 inc8/dec8:
 carry flag is left untouched. so only set Flags Z, N, H
+
+adc8/sbc8: add with carry and sub with carry
+basically adds (or subtracts) an extra 1 if the carry flag is set

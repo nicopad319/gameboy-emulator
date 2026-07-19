@@ -253,6 +253,30 @@ uint8_t CPU::dec8(uint8_t value) {
     return result;
 }
 
+void CPU::adc8(uint8_t value) {
+    uint8_t a = getA(); 
+    int carry = getFlagC() ? 1 : 0; //1 if carry flag is set 0 if not
+    int result = a + value + carry; //wide type (sees full sum)
+    
+    setFlagZ((result & 0xFF) == 0);
+    setFlagN(false); //always cleared for addition
+    setFlagH((a & 0x0F) + (value & 0x0F) + carry > 0x0F);
+    setFlagC(result > 0xFF);
+
+    setA(result & 0xFF); //set result after all flag calculations
+}
+
+void CPU::sbc8(uint8_t value) {
+    uint8_t a = getA();
+    int carry = getFlagC() ? 1 : 0;
+    int result = a - value - carry;
+    setFlagZ((result & 0xFF) == 0);
+    setFlagN(true);
+    setFlagH((a & 0x0F) < (value & 0x0F) + carry);
+    setFlagC(a < value + carry);
+    setA(result & 0xFF);
+}
+
 int CPU::execute(uint8_t opcode) {
     switch (opcode) {
         case 0x00: return 4; //NOP
@@ -363,7 +387,14 @@ int CPU::execute(uint8_t opcode) {
         case 0x85: add8(getL()); return 4;
         case 0x86: add8(_bus.read(getHL())); return 8;
         case 0x87: add8(getA()); return 4;
-
+        case 0x88: adc8(getB()); return 4;
+        case 0x89: adc8(getC()); return 4;
+        case 0x8A: adc8(getD()); return 4;
+        case 0x8B: adc8(getE()); return 4;
+        case 0x8C: adc8(getH()); return 4;
+        case 0x8D: adc8(getL()); return 4;
+        case 0x8E: adc8(_bus.read(getHL())); return 8;
+        case 0x8F: adc8(getA()); return 4;
         //sub8 operations
         case 0x90: sub8(getB()); return 4;
         case 0x91: sub8(getC()); return 4;
@@ -373,6 +404,14 @@ int CPU::execute(uint8_t opcode) {
         case 0x95: sub8(getL()); return 4;
         case 0x96: sub8(_bus.read(getHL())); return 8;
         case 0x97: sub8(getA()); return 4;
+        case 0x98: sbc8(getB()); return 4;
+        case 0x99: sbc8(getC()); return 4;
+        case 0x9A: sbc8(getD()); return 4;
+        case 0x9B: sbc8(getE()); return 4;
+        case 0x9C: sbc8(getH()); return 4;
+        case 0x9D: sbc8(getL()); return 4;
+        case 0x9E: sbc8(_bus.read(getHL())); return 8;
+        case 0x9F: sbc8(getA()); return 4;
         case 0xA0: and8(getB()); return 4;
         case 0xA1: and8(getC()); return 4;
         case 0xA2: and8(getD()); return 4;
@@ -408,9 +447,11 @@ int CPU::execute(uint8_t opcode) {
         case 0xC1: setBC(pop()); return 12;
         case 0xC5: push(getBC()); return 16;
         case 0xC6: add8(fetchByte()); return 8;
+        case 0xCE: adc8(fetchByte()); return 8;
         case 0xD1: setDE(pop()); return 12;
         case 0xD5: push(getDE()); return 16;
         case 0xD6: sub8(fetchByte()); return 8;
+        case 0xDE: sbc8(fetchByte()); return 8;
         case 0xE1: setHL(pop()); return 12;
         case 0xE5: push(getHL()); return 16;
         case 0xE6: and8(fetchByte()); return 8;
