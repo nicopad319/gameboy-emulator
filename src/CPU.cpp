@@ -205,6 +205,35 @@ void CPU::cp8(uint8_t value) {
     subFlags(value);            // discard the result, keep only the flags
 }
 
+void CPU::and8(uint8_t value) {
+    uint8_t a = getA();
+    uint8_t result = a & value;
+    setFlagZ(result == 0);
+    setFlagN(false);
+    setFlagH(true); 
+    setFlagC(false);
+    setA(result);
+}
+
+void CPU::or8(uint8_t value) {
+    uint8_t a = getA();
+    uint8_t result = a | value;
+    setFlagZ(result == 0);
+    setFlagN(false);
+    setFlagH(false);
+    setFlagC(false);
+    setA(result);
+}
+
+void CPU::xor8(uint8_t value) {
+    uint8_t a = getA();
+    uint8_t result = a ^ value;
+    setFlagZ(result == 0);
+    setFlagN(false);
+    setFlagH(false);
+    setFlagC(false);
+    setA(result);
+}
 
 
 int CPU::execute(uint8_t opcode) {
@@ -303,6 +332,30 @@ int CPU::execute(uint8_t opcode) {
         case 0x95: sub8(getL()); return 4;
         case 0x96: sub8(_bus.read(getHL())); return 8;
         case 0x97: sub8(getA()); return 4;
+        case 0xA0: and8(getB()); return 4;
+        case 0xA1: and8(getC()); return 4;
+        case 0xA2: and8(getD()); return 4;
+        case 0xA3: and8(getE()); return 4;
+        case 0xA4: and8(getH()); return 4;
+        case 0xA5: and8(getL()); return 4;
+        case 0xA6: and8(_bus.read(getHL())); return 8;
+        case 0xA7: and8(getA()); return 4;
+        case 0xA8: xor8(getB()); return 4;
+        case 0xA9: xor8(getC()); return 4;
+        case 0xAA: xor8(getD()); return 4;
+        case 0xAB: xor8(getE()); return 4;
+        case 0xAC: xor8(getH()); return 4;
+        case 0xAD: xor8(getL()); return 4;
+        case 0xAE: xor8(_bus.read(getHL())); return 8;
+        case 0xAF: xor8(getA()); return 4;
+        case 0xB0: or8(getB()); return 4;
+        case 0xB1: or8(getC()); return 4;
+        case 0xB2: or8(getD()); return 4;
+        case 0xB3: or8(getE()); return 4;
+        case 0xB4: or8(getH()); return 4;
+        case 0xB5: or8(getL()); return 4;
+        case 0xB6: or8(_bus.read(getHL())); return 8;
+        case 0xB7: or8(getA()); return 4;
         case 0xB8: cp8(getB()); return 4;
         case 0xB9: cp8(getC()); return 4;
         case 0xBA: cp8(getD()); return 4;
@@ -319,8 +372,11 @@ int CPU::execute(uint8_t opcode) {
         case 0xD6: sub8(fetchByte()); return 8;
         case 0xE1: setHL(pop()); return 12;
         case 0xE5: push(getHL()); return 16;
+        case 0xE6: and8(fetchByte()); return 8;
+        case 0xEE: xor8(fetchByte()); return 8;
         case 0xF1: setAF(pop()); return 12;
         case 0xF5: push(getAF()); return 16;
+        case 0xF6: or8(fetchByte()); return 8;
         case 0xF9: setSP(getHL()); return 8;
         case 0xFE: cp8(fetchByte()); return 8;
         

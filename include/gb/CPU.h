@@ -62,9 +62,16 @@ public:
     uint16_t pop(); 
     //arithmetic operations
     void add8(uint8_t value);
-    uint8_t subFlags(uint8_t value);
-    void sub8(uint8_t value);
-    void cp8(uint8_t value); //identical to sub but doesn't store result, only changes flags
+
+    uint8_t subFlags(uint8_t value); //actual sub function
+    void sub8(uint8_t value); //wrapper that stores result
+    void cp8(uint8_t value); //identical to sub but doesn't store result, so wrapper that doesn't store result
+
+    void and8(uint8_t value);
+    void or8(uint8_t value);
+    void xor8(uint8_t value);
+
+
 
 private:
     uint8_t _a; // Accumulator register

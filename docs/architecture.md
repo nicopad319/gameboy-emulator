@@ -112,3 +112,9 @@ exists because the DAA instruction later needs to know whether the previous op w
 C (Carry) — set if the result overflowed past 8 bits, i.e. the true sum exceeded 0xFF. For A + r, carry occurs if A + r > 0xFF.
 
 H (Half-carry) — set if there was a carry from bit 3 into bit 4 — i.e., the low nibbles overflowed. basically if the two lower nibbles are greater than 16 its set
+
+
+logical operators (AND, OR, XOR):
+flags C and N always 0!!
+flagZ(result == 0)
+flag H is always on for AND, always off for OR and XOR
