@@ -151,9 +151,19 @@ uint8_t CPU::fetchByte() {
     return byte;
 }
 
+uint16_t CPU::fetchWord() {
+    uint8_t lo = fetchByte();
+    uint8_t hi = fetchByte();
+    return (hi << 8) | lo;
+}
+
 int CPU::execute(uint8_t opcode) {
     switch (opcode) {
         case 0x00: return 4; 
+        case 0x01: setBC(fetchWord()); return 12;
+        case 0x11: setDE(fetchWord()); return 12;
+        case 0x21: setHL(fetchWord()); return 12;
+        case 0x31: setSP(fetchWord()); return 12;
         //8 bit loads
         case 0x40: setB(getB()); return 4;
         case 0x41: setB(getC()); return 4;

@@ -34,3 +34,9 @@ Productive day. Finished milestone 2, learned hex and binary and bitwise operati
 
 Session 4 (7/16/26):
 Finished wiring the CPU, ran a second smoke test and implemented a test function (check) to make sure everything works. Implemented the very first opcode (NOP) and a default in the switch. 
+
+Session 5 (7/17/26): 
+Short session today. implemented 8 bit load opcodes, and started writing a TestSystem to individually test opcodes/
+
+Session 6 (7/18/26):
+Implemented TestSystem struct and a testRegisterLoads() method and a testHLLoads() method. 8-bit loads are all done and tested. onto 16-bit loads

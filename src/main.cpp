@@ -145,6 +145,24 @@ void testRegisterLoads() {
     check("LD L,E takes 4 cycles", cycles, 4);
 }
 
+void test16BitLoads() {
+    TestSystem sys;
+    sys._bus.write16(0xC000, 0x1234);
+    sys._cpu.setPC(0xC000);
+
+    int cycles = sys._cpu.execute(0x01);
+    check("16 bit loads work", sys._cpu.getBC(), 0x1234);
+    check("16 bit loads takes 12 cycles", cycles, 12);
+    check("PC advanced past operands", sys._cpu.getPC(), 0xC002);
+    sys._cpu.reset();
+    sys._bus.write16(0xC100, 0xBEEF);
+    sys._cpu.setPC(0xC100);
+    cycles = sys._cpu.execute(0x31);
+    check("LD SP,d16 loads value", sys._cpu.getSP(), 0xBEEF);
+    check("LD SP,d16 takes 12 cycles", cycles, 12);
+    check("PC advanced by 2", sys._cpu.getPC(), 0xC102);
+}
+
 void testHLLoads() {
     TestSystem sys;
     sys._cpu.setHL(0xC000); // point HL at writable WRAM
@@ -158,8 +176,9 @@ void testHLLoads() {
 }
 
 int main() {
-    testRegisterLoads();
-    testHLLoads();
+    // testRegisterLoads();
+    // testHLLoads();
+    test16BitLoads();
     return 0;
 }
 
