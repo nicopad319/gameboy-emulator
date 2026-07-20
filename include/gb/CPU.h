@@ -81,8 +81,6 @@ public:
 
     uint16_t addSPr8();
 
-
-
 private:
     uint8_t _a; // Accumulator register
     uint8_t _f; // Flags register

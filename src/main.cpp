@@ -520,6 +520,69 @@ void testAddSPr8() {
     check("c5 cycles", cycles, 12);
 }
 
+void testRotates() {
+    TestSystem sys;
+
+    // --- RLCA (0x07): rotate left circular ---
+    sys._cpu.setA(0x80);              // 1000 0000
+    sys._cpu.execute(0x07);
+    check("RLCA 0x80 -> 0x01", sys._cpu.getA(), 0x01);   // bit7 wraps to bit0
+    check("RLCA C = old bit7", sys._cpu.getFlagC(), true);
+    check("RLCA Z forced 0", sys._cpu.getFlagZ(), false);
+    check("RLCA N", sys._cpu.getFlagN(), false);
+    check("RLCA H", sys._cpu.getFlagH(), false);
+
+    // --- RRCA (0x0F): rotate right circular ---
+    sys._cpu.reset();
+    sys._cpu.setA(0x01);             // 0000 0001
+    sys._cpu.execute(0x0F);
+    check("RRCA 0x01 -> 0x80", sys._cpu.getA(), 0x80);   // bit0 wraps to bit7
+    check("RRCA C = old bit0", sys._cpu.getFlagC(), true);
+    check("RRCA Z forced 0", sys._cpu.getFlagZ(), false);
+
+    // --- RLA (0x17): rotate left THROUGH carry ---
+    // Key case: result is 0x00 but Z must STILL be 0, and proves old-carry fills bit0
+    sys._cpu.reset();
+    sys._cpu.setA(0x80);
+    sys._cpu.setFlagC(false);        // old carry = 0 fills bit 0
+    sys._cpu.execute(0x17);
+    check("RLA 0x80,C=0 -> 0x00", sys._cpu.getA(), 0x00);
+    check("RLA C = old bit7", sys._cpu.getFlagC(), true);
+    check("RLA Z forced 0 even on zero result", sys._cpu.getFlagZ(), false);
+
+    // Discriminator: same A, carry SET -> old carry (1) fills bit 0 -> different result
+    sys._cpu.reset();
+    sys._cpu.setA(0x80);
+    sys._cpu.setFlagC(true);         // old carry = 1 fills bit 0
+    sys._cpu.execute(0x17);
+    check("RLA 0x80,C=1 -> 0x01 (carry routed in)", sys._cpu.getA(), 0x01);
+    check("RLA C = old bit7", sys._cpu.getFlagC(), true);
+
+    // --- RRA (0x1F): rotate right THROUGH carry ---
+    sys._cpu.reset();
+    sys._cpu.setA(0x01);
+    sys._cpu.setFlagC(false);        // old carry = 0 fills bit 7
+    sys._cpu.execute(0x1F);
+    check("RRA 0x01,C=0 -> 0x00", sys._cpu.getA(), 0x00);
+    check("RRA C = old bit0", sys._cpu.getFlagC(), true);
+    check("RRA Z forced 0", sys._cpu.getFlagZ(), false);
+
+    sys._cpu.reset();
+    sys._cpu.setA(0x00);
+    sys._cpu.setFlagC(true);         // old carry = 1 fills bit 7
+    sys._cpu.execute(0x1F);
+    check("RRA 0x00,C=1 -> 0x80 (carry routed in)", sys._cpu.getA(), 0x80);
+    check("RRA C = old bit0 (0)", sys._cpu.getFlagC(), false);
+
+    // --- Prove RLCA (circular) IGNORES carry-in, unlike RLA ---
+    sys._cpu.reset();
+    sys._cpu.setA(0x40);             // 0100 0000, bit7 = 0
+    sys._cpu.setFlagC(true);         // carry set...
+    sys._cpu.execute(0x07);          // RLCA
+    check("RLCA ignores carry-in -> 0x80", sys._cpu.getA(), 0x80);  // carry-in irrelevant
+    check("RLCA C = old bit7 (0)", sys._cpu.getFlagC(), false);
+}
+
 int main() {
     // testRegisterLoads();
     // testHLLoads();
@@ -536,7 +599,8 @@ int main() {
     // testSbc();
     // test16BitIncDec();
     // testAdd16();
-    testAddSPr8();
+    // testAddSPr8();
+    testRotates();
     return 0;
 }
 
