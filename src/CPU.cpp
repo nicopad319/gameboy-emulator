@@ -277,10 +277,21 @@ void CPU::sbc8(uint8_t value) {
     setA(result & 0xFF);
 }
 
+void CPU::add16(uint16_t value) {
+    uint16_t hl = getHL();
+    int result = hl + value; //wide enough to see bit-15 carry
+    //FlagZ untouched
+    setFlagN(false);
+    setFlagH((hl & 0x0FFF) + (value & 0x0FFF) > 0x0FFF);
+    setFlagC(result > 0xFFFF);
+    setHL(result & 0xFFFF);
+}
+
 int CPU::execute(uint8_t opcode) {
     switch (opcode) {
         case 0x00: return 4; //NOP
         case 0x01: setBC(fetchWord()); return 12;
+        case 0x03: setBC(getBC() + 1); return 8;
         case 0x04: setB(inc8(getB())); return 4;
         case 0x05: setB(dec8(getB())); return 4;
         case 0x08: {
@@ -288,19 +299,28 @@ int CPU::execute(uint8_t opcode) {
             _bus.write16(addr, getSP()); //(fetchWord could affect SP if it was called in the same line)
             return 20;
         }
+        case 0x09: add16(getBC()); return 8;
+        case 0x0B: setBC(getBC() - 1); return 8;
         case 0x0C: setC(inc8(getC())); return 4;
         case 0x0D: setC(dec8(getC())); return 4;
         case 0x11: setDE(fetchWord()); return 12;
+        case 0x13: setDE(getDE() + 1); return 8;
         case 0x14: setD(inc8(getD())); return 4;
         case 0x15: setD(dec8(getD())); return 4;
+        case 0x19: add16(getDE()); return 8;
+        case 0x1B: setDE(getDE() - 1); return 8;
         case 0x1C: setE(inc8(getE())); return 4;
         case 0x1D: setE(dec8(getE())); return 4;
         case 0x21: setHL(fetchWord()); return 12;
+        case 0x23: setHL(getHL() + 1); return 8;
         case 0x24: setH(inc8(getH())); return 4;
         case 0x25: setH(dec8(getH())); return 4;
+        case 0x29: add16(getHL()); return 8;
+        case 0x2B: setHL(getHL() - 1); return 8;
         case 0x2C: setL(inc8(getL())); return 4;
         case 0x2D: setL(dec8(getL())); return 4;
         case 0x31: setSP(fetchWord()); return 12;
+        case 0x33: setSP(getSP() + 1); return 8;
         case 0x34: {
             uint8_t v = _bus.read(getHL());
             _bus.write(getHL(), inc8(v));
@@ -311,6 +331,8 @@ int CPU::execute(uint8_t opcode) {
             _bus.write(getHL(), dec8(v));
             return 12;
         }
+        case 0x39: add16(getSP()); return 8;
+        case 0x3B: setSP(getSP() - 1); return 8;
         case 0x3C: setA(inc8(getA())); return 4;
         case 0x3D: setA(dec8(getA())); return 4;
         //8 bit loads

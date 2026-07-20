@@ -409,6 +409,60 @@ void testSbc() {
     check("HL cycles correct", cycles, 8);
 }
 
+void test16BitIncDec() {
+    TestSystem sys;
+    sys._cpu.setFlagZ(true);
+    sys._cpu.setFlagN(true);
+    sys._cpu.setFlagH(true);
+    sys._cpu.setFlagC(true);
+
+    sys._cpu.setHL(0xFFFF);
+    int cycles = sys._cpu.execute(0x23);
+    check("INC wraparound correctly", sys._cpu.getHL(), 0x0000);
+    check("INC doesn't touch flags", sys._cpu.getFlagZ(), true);
+    check("INC doesn't touch flags", sys._cpu.getFlagN(), true);
+    check("INC doesn't touch flags", sys._cpu.getFlagH(), true);
+    check("INC doesn't touch flags", sys._cpu.getFlagC(), true);
+    check("Cycles is correct", cycles, 8);
+
+    sys._cpu.reset();
+    sys._cpu.setFlagZ(true);
+    sys._cpu.setFlagN(true);
+    sys._cpu.setFlagH(true);
+    sys._cpu.setFlagC(true);
+    sys._cpu.setBC(0x0001);
+    cycles = sys._cpu.execute(0x0B);
+    check("DEC decrements correctly", sys._cpu.getBC(), 0x0000);
+    check("INC doesn't touch flags", sys._cpu.getFlagZ(), true);
+    check("INC doesn't touch flags", sys._cpu.getFlagN(), true);
+    check("INC doesn't touch flags", sys._cpu.getFlagH(), true);
+    check("INC doesn't touch flags", sys._cpu.getFlagC(), true);
+    check("Cycles is correct", cycles, 8);
+}
+
+
+void testAdd16() {
+    TestSystem sys;
+    sys._cpu.setFlagZ(true);
+    sys._cpu.setHL(0x0FFF);
+    sys._cpu.setBC(0x0001);
+    int cycles = sys._cpu.execute(0x09);
+    check("C1: Bit 11 half carry works", sys._cpu.getHL(), 0x1000);
+    check("C1 FlagH", sys._cpu.getFlagH(), true);
+    check("C1 FlagC", sys._cpu.getFlagC(), false);
+    check("add16 doesn't touch Z", sys._cpu.getFlagZ(), true);
+
+    sys._cpu.reset();
+    sys._cpu.setFlagZ(false);
+    sys._cpu.setHL(0xFFFF);
+    sys._cpu.setBC(0x0001);
+    cycles = sys._cpu.execute(0x09);
+    check("C2: bit 15 carry", sys._cpu.getHL(), 0x0000);
+    check("C2: flagC", sys._cpu.getFlagC(), true);
+    check("C2: flagH", sys._cpu.getFlagH(), true);
+    check("flagZ untouched", sys._cpu.getFlagZ(), false);
+}
+
 int main() {
     // testRegisterLoads();
     // testHLLoads();
@@ -421,8 +475,10 @@ int main() {
     // testOr();
     // testXor();
     // testIncDec();
-    testAdc();
-    testSbc();
+    // testAdc();
+    // testSbc();
+    // test16BitIncDec();
+    testAdd16();
     return 0;
 }
 

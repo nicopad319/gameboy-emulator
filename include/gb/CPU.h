@@ -76,7 +76,8 @@ public:
 
     void adc8(uint8_t value);
     void sbc8(uint8_t value);
-    
+
+    void add16(uint16_t value);
 
 
 
