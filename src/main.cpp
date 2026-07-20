@@ -583,6 +583,73 @@ void testRotates() {
     check("RLCA C = old bit7 (0)", sys._cpu.getFlagC(), false);
 }
 
+void testControlFlow() {
+    TestSystem sys;
+
+    // --- CALL -> RET round trip (the key integration test) ---
+    sys._cpu.setSP(0xC100);
+    // Put a CALL 0x1234 at 0xC000: opcode 0xCD, then addr bytes 0x34, 0x12
+    sys._bus.write(0xC000, 0xCD);
+    sys._bus.write(0xC001, 0x34);
+    sys._bus.write(0xC002, 0x12);
+    sys._cpu.setPC(0xC000);
+
+    // Step through the CALL via the real fetch path (execute the fetched opcode)
+    int cycles = sys._cpu.step();          // fetches 0xCD, runs CALL
+    check("CALL jumps to target", sys._cpu.getPC(), 0x1234);
+    check("CALL pushed return addr (SP-2)", sys._cpu.getSP(), 0xC0FE);
+    check("CALL cycles", cycles, 24);
+
+    // Now RET should bring PC back to 0xC003 (the instruction after the CALL)
+    cycles = sys._cpu.execute(0xC9);       // RET
+    check("RET returns to after CALL", sys._cpu.getPC(), 0xC003);
+    check("RET restored SP", sys._cpu.getSP(), 0xC100);
+    check("RET cycles", cycles, 16);
+
+    // --- Conditional JP: taken vs not-taken ---
+    // JP NZ taken (Z clear)
+    sys._cpu.reset();
+    sys._bus.write(0xC000, 0x00); sys._bus.write(0xC001, 0x20);  // addr 0x2000
+    sys._cpu.setPC(0xC000);
+    sys._cpu.setFlagZ(false);
+    cycles = sys._cpu.execute(0xC2);       // JP NZ, a16 (operands at PC)
+    check("JP NZ taken -> jumps", sys._cpu.getPC(), 0x2000);
+    check("JP NZ taken cycles", cycles, 16);
+
+    // JP NZ not taken (Z set) — PC should advance past operand only (to 0xC002), no jump
+    sys._cpu.reset();
+    sys._bus.write(0xC000, 0x00); sys._bus.write(0xC001, 0x20);
+    sys._cpu.setPC(0xC000);
+    sys._cpu.setFlagZ(true);
+    cycles = sys._cpu.execute(0xC2);
+    check("JP NZ not taken -> no jump", sys._cpu.getPC(), 0xC002);  // advanced past 2 operand bytes
+    check("JP NZ not taken cycles", cycles, 12);
+
+    // --- JR signed offset: forward and backward ---
+    // JR +5 forward
+    sys._cpu.reset();
+    sys._bus.write(0xC000, 0x05);          // offset +5
+    sys._cpu.setPC(0xC000);
+    cycles = sys._cpu.execute(0x18);       // JR r8
+    // after fetching offset, PC = 0xC001, then +5 = 0xC006
+    check("JR +5 forward", sys._cpu.getPC(), 0xC006);
+
+    // JR -1 backward (0xFF)
+    sys._cpu.reset();
+    sys._bus.write(0xC000, 0xFF);          // offset -1
+    sys._cpu.setPC(0xC000);
+    cycles = sys._cpu.execute(0x18);
+    // after fetch, PC = 0xC001, then -1 = 0xC000
+    check("JR -1 backward", sys._cpu.getPC(), 0xC000);
+
+    // --- JP HL: 4 cycles, uses HL directly ---
+    sys._cpu.reset();
+    sys._cpu.setHL(0x4321);
+    cycles = sys._cpu.execute(0xE9);
+    check("JP HL jumps to HL value", sys._cpu.getPC(), 0x4321);
+    check("JP HL cycles", cycles, 4);
+}
+
 int main() {
     // testRegisterLoads();
     // testHLLoads();
@@ -600,7 +667,8 @@ int main() {
     // test16BitIncDec();
     // testAdd16();
     // testAddSPr8();
-    testRotates();
+    // testRotates();
+    testControlFlow();
     return 0;
 }
 

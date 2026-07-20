@@ -108,4 +108,6 @@ private:
     //method needed for opcode logic
     uint8_t fetchByte(); 
     uint16_t fetchWord();
+
+    bool _ime;
 };

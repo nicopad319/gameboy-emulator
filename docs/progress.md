@@ -44,3 +44,4 @@ Implemented TestSystem struct and a testRegisterLoads() method and a testHLLoads
 6.5: did 16 bit loads, and implemented arithmetic logic including ADD, SUB, CP, AND, OR, XOR. roughly 25% done with opcodes. testing as I go to make sure that it passes blargg's test roms hopefully first try. green flags all around so far. will try to be done with opcodes either tomorrow or two days from now.
 
 Session 7 (7/19/26):
+implemented and tested about 100 opcodes today. i think 33 or 34 left in the main branch, then onto the 256 more in the Prefix CB branch. will hopefully be done with the CPU either tomorrow or tuesday.

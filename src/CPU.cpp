@@ -19,6 +19,7 @@ void CPU::reset() {
     _l = 0x4D;
     _sp = 0xFFFE; //top of HRAM
     _pc = 0x0100; //execution entry point on game cartridge
+    _ime = false;
 }
 
 //8 bit getter functions
@@ -336,6 +337,7 @@ int CPU::execute(uint8_t opcode) {
             setFlagH(false);
             return 4;
         }
+        //0x10 stop
         case 0x11: setDE(fetchWord()); return 12;
         case 0x12: _bus.write(getDE(), getA()); return 8;
         case 0x13: setDE(getDE() + 1); return 8;
@@ -351,6 +353,11 @@ int CPU::execute(uint8_t opcode) {
             setFlagN(false);
             setFlagH(false);
             return 4;
+        }
+        case 0x18: {
+            int8_t offset = static_cast<int8_t>(fetchByte());
+            setPC(getPC() + offset);
+            return 12;
         }
         case 0x19: add16(getDE()); return 8;
         case 0x1A: setA(_bus.read(getDE())); return 8;
@@ -368,6 +375,14 @@ int CPU::execute(uint8_t opcode) {
             setFlagH(false);
             return 4;
         }
+        case 0x20: {  // JR NZ, r8
+            int8_t offset = static_cast<int8_t>(fetchByte());   // ALWAYS fetch
+            if (!getFlagZ()) {
+                setPC(getPC() + offset);
+                return 12;   // taken
+            }
+            return 8;        // not taken
+        }
         case 0x21: setHL(fetchWord()); return 12;
         case 0x22: {  // LD (HL+), A
             _bus.write(getHL(), getA());   // write at CURRENT HL
@@ -378,6 +393,14 @@ int CPU::execute(uint8_t opcode) {
         case 0x24: setH(inc8(getH())); return 4;
         case 0x25: setH(dec8(getH())); return 4;
         case 0x26: setH(fetchByte()); return 8;
+        case 0x28: {  // JR Z, r8
+            int8_t offset = static_cast<int8_t>(fetchByte());   // ALWAYS fetch
+            if (getFlagZ()) {
+                setPC(getPC() + offset);
+                return 12;   // taken
+            }
+            return 8;        // not taken
+        }
         case 0x29: add16(getHL()); return 8;
         case 0x2A: {
             setA(_bus.read(getHL()));
@@ -393,6 +416,14 @@ int CPU::execute(uint8_t opcode) {
             setFlagN(true);
             setFlagH(true);
             return 4;
+        }
+        case 0x30: {  // JR NC, r8
+            int8_t offset = static_cast<int8_t>(fetchByte());   // ALWAYS fetch
+            if (!getFlagC()) {
+                setPC(getPC() + offset);
+                return 12;   // taken
+            }
+            return 8;        // not taken
         }
         case 0x31: setSP(fetchWord()); return 12;
         case 0x32: {  // LD (HL-), A
@@ -421,6 +452,14 @@ int CPU::execute(uint8_t opcode) {
             setFlagH(false);
             setFlagC(true);
             return 4;
+        }
+        case 0x38: {  // JR C, r8
+            int8_t offset = static_cast<int8_t>(fetchByte());   // ALWAYS fetch
+            if (getFlagC()) {
+                setPC(getPC() + offset);
+                return 12;   // taken
+            }
+            return 8;        // not taken
         }
         case 0x39: add16(getSP()); return 8;
         case 0x3A: {
@@ -569,14 +608,123 @@ int CPU::execute(uint8_t opcode) {
         case 0xBD: cp8(getL()); return 4;
         case 0xBE: cp8(_bus.read(getHL())); return 8;
         case 0xBF: cp8(getA()); return 4;
+        case 0xC0: {  // RET NZ
+            if (!getFlagZ()) {
+                setPC(pop());
+                return 20;   // taken
+            }
+            return 8;        // not taken
+        }
         case 0xC1: setBC(pop()); return 12;
+        case 0xC2: {  // JP NZ, a16
+            uint16_t addr = fetchWord();      // ALWAYS fetch — PC must advance past operand
+            if (!getFlagZ()) {                // NZ = Z clear
+                setPC(addr);
+                return 16;                    // branch taken
+            }
+            return 12;                        // branch not taken
+        }
+        case 0xC3: setPC(fetchWord()); return 16;
+        case 0xC4: {  // CALL NZ, a16
+            uint16_t addr = fetchWord();    // ALWAYS fetch
+            if (!getFlagZ()) {
+                push(getPC());
+                setPC(addr);
+                return 24;   // taken
+            }
+            return 12;        // not taken
+        }
         case 0xC5: push(getBC()); return 16;
         case 0xC6: add8(fetchByte()); return 8;
+        case 0xC7: push(getPC()); setPC(0x0000); return 16;
+        case 0xC8: {  // RET Z
+            if (getFlagZ()) {
+                setPC(pop());
+                return 20;   // taken
+            }
+            return 8;        // not taken
+        }
+        case 0xC9: setPC(pop()); return 16;
+        case 0xCA: {  // JP NZ, a16
+            uint16_t addr = fetchWord();      // ALWAYS fetch — PC must advance past operand
+            if (getFlagZ()) {                 // Z = Z set
+                setPC(addr);
+                return 16;                    // branch taken
+            }
+            return 12;                        // branch not taken
+        }
+        case 0xCC: {  // CALL Z, a16
+            uint16_t addr = fetchWord();    // ALWAYS fetch
+            if (getFlagZ()) {
+                push(getPC());
+                setPC(addr);
+                return 24;   // taken
+            }
+            return 12;        // not taken
+        }
+        case 0xCD: {
+            uint16_t addr = fetchWord();    // fetch target — PC now points at next instruction
+            push(getPC());                  // push return address (the next-instruction PC)
+            setPC(addr);                    // jump to target
+            return 24;
+        }
         case 0xCE: adc8(fetchByte()); return 8;
+        case 0xCF: push(getPC()); setPC(0x0008); return 16;
+        case 0xD0: {  // RET NC
+            if (!getFlagC()) {
+                setPC(pop());
+                return 20;   // taken
+            }
+            return 8;        // not taken
+        }
         case 0xD1: setDE(pop()); return 12;
+        case 0xD2: {  // JP NZ, a16
+            uint16_t addr = fetchWord();      // ALWAYS fetch — PC must advance past operand
+            if (!getFlagC()) {                 // NC = C clear
+                setPC(addr);
+                return 16;                    // branch taken
+            }
+            return 12;                        // branch not taken
+        }
+        case 0xD4: {  // CALL NC, a16
+            uint16_t addr = fetchWord();    // ALWAYS fetch
+            if (!getFlagC()) {
+                push(getPC());
+                setPC(addr);
+                return 24;   // taken
+            }
+            return 12;        // not taken
+        }
         case 0xD5: push(getDE()); return 16;
         case 0xD6: sub8(fetchByte()); return 8;
+        case 0xD7: push(getPC()); setPC(0x0010); return 16;
+        case 0xD8: {  // RET C
+            if (getFlagC()) {
+                setPC(pop());
+                return 20;   // taken
+            }
+            return 8;        // not taken
+        }
+        case 0xD9: _ime = true; setPC(pop()); return 16;
+        case 0xDA: {  // JP NZ, a16
+            uint16_t addr = fetchWord();      // ALWAYS fetch — PC must advance past operand
+            if (getFlagC()) {                 // C = C set
+                setPC(addr);
+                return 16;                    // branch taken
+            }
+            return 12;                        // branch not taken
+        }
+        case 0xDC: {  // CALL C, a16
+            uint16_t addr = fetchWord();    // ALWAYS fetch
+            if (getFlagC()) {
+                push(getPC());
+                setPC(addr);
+                return 24;   // taken
+            }
+            return 12;        // not taken
+        }
         case 0xDE: sbc8(fetchByte()); return 8;
+        case 0xDF: push(getPC()); setPC(0x0018); return 16;
         case 0xE0: {
             uint8_t offset = fetchByte();
             _bus.write(0xFF00 + offset, getA());
@@ -586,13 +734,16 @@ int CPU::execute(uint8_t opcode) {
         case 0xE2: _bus.write(0xFF00 + getC(), getA()); return 8;
         case 0xE5: push(getHL()); return 16;
         case 0xE6: and8(fetchByte()); return 8;
+        case 0xE7: push(getPC()); setPC(0x0020); return 16;
         case 0xE8: setSP(addSPr8()); return 16;
+        case 0xE9: setPC(getHL()); return 4;
         case 0xEA: {
             uint16_t addr = fetchWord();
             _bus.write(addr, getA());
             return 16;
         }
         case 0xEE: xor8(fetchByte()); return 8;
+        case 0xEF: push(getPC()); setPC(0x0028); return 16;
         case 0xF0: {
             uint8_t offset = fetchByte();
             setA(_bus.read(0xFF00 + offset));
@@ -602,6 +753,7 @@ int CPU::execute(uint8_t opcode) {
         case 0xF2: setA(_bus.read(0xFF00 + getC())); return 8;
         case 0xF5: push(getAF()); return 16;
         case 0xF6: or8(fetchByte()); return 8;
+        case 0xF7: push(getPC()); setPC(0x0030); return 16;
         case 0xF8: setHL(addSPr8()); return 12; 
         case 0xF9: setSP(getHL()); return 8;
         case 0xFA: {
@@ -610,6 +762,7 @@ int CPU::execute(uint8_t opcode) {
             return 16;
         }
         case 0xFE: cp8(fetchByte()); return 8;
+        case 0xFF: push(getPC()); setPC(0x0038); return 16;
         
         default: 
             std::cerr << "Unimplemented opcode 0x"
