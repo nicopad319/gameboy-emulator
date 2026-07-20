@@ -20,6 +20,7 @@ void CPU::reset() {
     _sp = 0xFFFE; //top of HRAM
     _pc = 0x0100; //execution entry point on game cartridge
     _ime = false;
+    _halted = false;
 }
 
 //8 bit getter functions
@@ -337,7 +338,7 @@ int CPU::execute(uint8_t opcode) {
             setFlagH(false);
             return 4;
         }
-        //0x10 stop
+        case 0x10: fetchByte(); _halted = true; return 4;   // TODO: real STOP behavior (M5); consumes next byte
         case 0x11: setDE(fetchWord()); return 12;
         case 0x12: _bus.write(getDE(), getA()); return 8;
         case 0x13: setDE(getDE() + 1); return 8;
@@ -393,6 +394,38 @@ int CPU::execute(uint8_t opcode) {
         case 0x24: setH(inc8(getH())); return 4;
         case 0x25: setH(dec8(getH())); return 4;
         case 0x26: setH(fetchByte()); return 8;
+        case 0x27: {  // DAA
+            int a = getA(); //work in int
+            int correction = 0;
+            bool setC = false;
+
+            if (!getFlagN()) {   // after an ADD
+                if (getFlagH() || (a & 0x0F) > 0x09) {
+                    correction |= 0x06;
+                }
+                if (getFlagC() || a > 0x99) {
+                    correction |= 0x60;
+                    setC = true;
+                }
+                a += correction;
+            } else {             // after a SUB
+                if (getFlagH()) {
+                    correction |= 0x06;
+                }
+                if (getFlagC()) {
+                    correction |= 0x60;
+                }
+                a -= correction;
+                setC = getFlagC();   // subtract keeps the existing carry
+            }
+
+            setA(static_cast<uint8_t>(a & 0xFF));   // explicit narrowing at the store
+            setFlagZ((a & 0xFF) == 0);
+            setFlagH(false);        // H always cleared
+            setFlagC(setC);
+            // N unchanged
+            return 4;
+        }
         case 0x28: {  // JR Z, r8
             int8_t offset = static_cast<int8_t>(fetchByte());   // ALWAYS fetch
             if (getFlagZ()) {
@@ -532,7 +565,7 @@ int CPU::execute(uint8_t opcode) {
         case 0x73: _bus.write(getHL(), getE()); return 8;
         case 0x74: _bus.write(getHL(), getH()); return 8;
         case 0x75: _bus.write(getHL(), getL()); return 8;
-        //skip 0x76 HALT for now
+        case 0x76: _halted = true; return 4;   // TODO: real HALT behavior needs interrupts (M5)
         case 0x77: _bus.write(getHL(), getA()); return 8;
         case 0x78: setA(getB()); return 4;
         case 0x79: setA(getC()); return 4;
@@ -751,6 +784,7 @@ int CPU::execute(uint8_t opcode) {
         }
         case 0xF1: setAF(pop()); return 12;
         case 0xF2: setA(_bus.read(0xFF00 + getC())); return 8;
+        case 0xF3: _ime = false; return 4;
         case 0xF5: push(getAF()); return 16;
         case 0xF6: or8(fetchByte()); return 8;
         case 0xF7: push(getPC()); setPC(0x0030); return 16;
@@ -761,6 +795,7 @@ int CPU::execute(uint8_t opcode) {
             setA(_bus.read(addr));
             return 16;
         }
+        case 0xFB: _ime = true; return 4;   // TODO: EI has a 1-instruction delay
         case 0xFE: cp8(fetchByte()); return 8;
         case 0xFF: push(getPC()); setPC(0x0038); return 16;
         
@@ -773,6 +808,7 @@ int CPU::execute(uint8_t opcode) {
             throw std::runtime_error("Unimplemented opcode");
     }
 }
+
 int CPU::step() {
     uint8_t opcode = fetchByte();
     return execute(opcode);

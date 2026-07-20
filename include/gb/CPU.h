@@ -110,4 +110,5 @@ private:
     uint16_t fetchWord();
 
     bool _ime;
+    bool _halted;
 };

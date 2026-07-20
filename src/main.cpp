@@ -650,6 +650,50 @@ void testControlFlow() {
     check("JP HL cycles", cycles, 4);
 }
 
+void testDaa() {
+    TestSystem sys;
+
+    // Case 1: BCD 9 + 1 = 10  (low nibble > 9, add 6)
+    sys._cpu.setA(0x09);
+    sys._cpu.setB(0x01);
+    sys._cpu.execute(0x80);          // ADD A,B -> 0x0A, N=0
+    sys._cpu.execute(0x27);          // DAA
+    check("DAA c1: 9+1 = BCD 10", sys._cpu.getA(), 0x10);
+    check("DAA c1 Z", sys._cpu.getFlagZ(), false);
+    check("DAA c1 H cleared", sys._cpu.getFlagH(), false);
+    check("DAA c1 C", sys._cpu.getFlagC(), false);
+    check("DAA c1 N unchanged", sys._cpu.getFlagN(), false);
+
+    // Case 2: BCD 8 + 8 = 16  (half-carry triggers +6)
+    sys._cpu.reset();
+    sys._cpu.setA(0x08);
+    sys._cpu.setB(0x08);
+    sys._cpu.execute(0x80);          // ADD -> 0x10, H=1
+    sys._cpu.execute(0x27);
+    check("DAA c2: 8+8 = BCD 16", sys._cpu.getA(), 0x16);
+    check("DAA c2 C", sys._cpu.getFlagC(), false);
+
+    // Case 3: BCD 90 + 10 = 100 -> "00" + carry
+    sys._cpu.reset();
+    sys._cpu.setA(0x90);
+    sys._cpu.setB(0x10);
+    sys._cpu.execute(0x80);          // ADD -> 0xA0
+    sys._cpu.execute(0x27);
+    check("DAA c3: 90+10 = BCD 00", sys._cpu.getA(), 0x00);
+    check("DAA c3 Z set", sys._cpu.getFlagZ(), true);
+    check("DAA c3 C set (decimal carry)", sys._cpu.getFlagC(), true);
+
+    // Case 4: BCD 10 - 1 = 09  (subtract path, H triggers -6)
+    sys._cpu.reset();
+    sys._cpu.setA(0x10);
+    sys._cpu.setB(0x01);
+    sys._cpu.execute(0x90);          // SUB A,B -> 0x0F, N=1, H=1
+    sys._cpu.execute(0x27);
+    check("DAA c4: 10-1 = BCD 09", sys._cpu.getA(), 0x09);
+    check("DAA c4 N still set", sys._cpu.getFlagN(), true);
+    check("DAA c4 C", sys._cpu.getFlagC(), false);
+}
+
 int main() {
     // testRegisterLoads();
     // testHLLoads();
@@ -668,7 +712,8 @@ int main() {
     // testAdd16();
     // testAddSPr8();
     // testRotates();
-    testControlFlow();
+    // testControlFlow();
+    testDaa();
     return 0;
 }
 
