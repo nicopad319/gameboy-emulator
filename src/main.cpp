@@ -463,6 +463,63 @@ void testAdd16() {
     check("flagZ untouched", sys._cpu.getFlagZ(), false);
 }
 
+void testAddSPr8() {
+    TestSystem sys;
+    // Case 1: positive offset, no carries
+    sys._bus.write(0xC500, 0x01);        // offset = +1
+    sys._cpu.setSP(0xC000);
+    sys._cpu.setPC(0xC500);
+    int cycles = sys._cpu.execute(0xE8);
+    check("c1 SP+1 result", sys._cpu.getSP(), 0xC001);
+    check("c1 Z", sys._cpu.getFlagZ(), false);
+    check("c1 N", sys._cpu.getFlagN(), false);
+    check("c1 H", sys._cpu.getFlagH(), false);
+    check("c1 C", sys._cpu.getFlagC(), false);
+    check("c1 cycles", cycles, 16);
+
+    // Case 2: NEGATIVE offset — proves signed interpretation
+    sys._cpu.reset();
+    sys._bus.write(0xC500, 0xFF);        // 0xFF as int8 = -1
+    sys._cpu.setSP(0xC000);
+    sys._cpu.setPC(0xC500);
+    cycles = sys._cpu.execute(0xE8);
+    check("c2 signed -1 gives 0xBFFF", sys._cpu.getSP(), 0xBFFF);  // NOT 0xC0FF
+    check("c2 Z", sys._cpu.getFlagZ(), false);
+    check("c2 N", sys._cpu.getFlagN(), false);
+    check("c2 H", sys._cpu.getFlagH(), false);   // 0x0 + 0xF = 0xF, no carry
+    check("c2 C", sys._cpu.getFlagC(), false);   // 0x00 + 0xFF = 0xFF, no carry
+
+    // Case 3: sets H (bit-3 carry on low byte)
+    sys._cpu.reset();
+    sys._bus.write(0xC500, 0x01);
+    sys._cpu.setSP(0xC00F);
+    sys._cpu.setPC(0xC500);
+    cycles = sys._cpu.execute(0xE8);
+    check("c3 result 0xC010", sys._cpu.getSP(), 0xC010);
+    check("c3 H set", sys._cpu.getFlagH(), true);   // 0xF + 0x1 = 0x10
+    check("c3 C clear", sys._cpu.getFlagC(), false);
+
+    // Case 4: sets H and C (bit-7 carry on low byte)
+    sys._cpu.reset();
+    sys._bus.write(0xC500, 0x01);
+    sys._cpu.setSP(0xC0FF);
+    sys._cpu.setPC(0xC500);
+    cycles = sys._cpu.execute(0xE8);
+    check("c4 result 0xC100", sys._cpu.getSP(), 0xC100);
+    check("c4 H set", sys._cpu.getFlagH(), true);
+    check("c4 C set", sys._cpu.getFlagC(), true);
+
+    // Case 5: LD HL, SP+r8 (0xF8) — stores to HL, leaves SP alone, 12 cycles
+    sys._cpu.reset();
+    sys._bus.write(0xC500, 0x01);
+    sys._cpu.setSP(0xC000);
+    sys._cpu.setPC(0xC500);
+    cycles = sys._cpu.execute(0xF8);
+    check("c5 HL = SP+1", sys._cpu.getHL(), 0xC001);
+    check("c5 SP unchanged", sys._cpu.getSP(), 0xC000);   // the distinguishing check
+    check("c5 cycles", cycles, 12);
+}
+
 int main() {
     // testRegisterLoads();
     // testHLLoads();
@@ -478,7 +535,8 @@ int main() {
     // testAdc();
     // testSbc();
     // test16BitIncDec();
-    testAdd16();
+    // testAdd16();
+    testAddSPr8();
     return 0;
 }
 

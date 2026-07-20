@@ -287,6 +287,17 @@ void CPU::add16(uint16_t value) {
     setHL(result & 0xFFFF);
 }
 
+uint16_t CPU::addSPr8() {
+    uint8_t raw = fetchByte();                      // unsigned, for flags
+    int8_t offset = static_cast<int8_t>(raw);       // signed, for the result
+    uint16_t sp = getSP();
+    setFlagZ(false);
+    setFlagN(false);
+    setFlagH((sp & 0x0F) + (raw & 0x0F) > 0x0F);    // use raw (unsigned) for flags
+    setFlagC((sp & 0xFF) + (raw & 0xFF) > 0xFF);
+    return sp + offset;                             // use offset (signed) for result
+}
+
 int CPU::execute(uint8_t opcode) {
     switch (opcode) {
         case 0x00: return 4; //NOP
@@ -477,10 +488,12 @@ int CPU::execute(uint8_t opcode) {
         case 0xE1: setHL(pop()); return 12;
         case 0xE5: push(getHL()); return 16;
         case 0xE6: and8(fetchByte()); return 8;
+        case 0xE8: setSP(addSPr8()); return 16;
         case 0xEE: xor8(fetchByte()); return 8;
         case 0xF1: setAF(pop()); return 12;
         case 0xF5: push(getAF()); return 16;
         case 0xF6: or8(fetchByte()); return 8;
+        case 0xF8: setHL(addSPr8()); return 12; 
         case 0xF9: setSP(getHL()); return 8;
         case 0xFE: cp8(fetchByte()); return 8;
         

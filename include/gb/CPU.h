@@ -79,6 +79,8 @@ public:
 
     void add16(uint16_t value);
 
+    uint16_t addSPr8();
+
 
 
 private:
