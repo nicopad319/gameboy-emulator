@@ -302,9 +302,11 @@ int CPU::execute(uint8_t opcode) {
     switch (opcode) {
         case 0x00: return 4; //NOP
         case 0x01: setBC(fetchWord()); return 12;
+        case 0x02: _bus.write(getBC(), getA()); return 8;
         case 0x03: setBC(getBC() + 1); return 8;
         case 0x04: setB(inc8(getB())); return 4;
         case 0x05: setB(dec8(getB())); return 4;
+        case 0x06: setB(fetchByte()); return 8;
         case 0x07: { //RLCA
             uint8_t bit7 = (getA() >> 7) & 1;
             setA((getA() << 1) | bit7);
@@ -320,9 +322,11 @@ int CPU::execute(uint8_t opcode) {
             return 20;
         }
         case 0x09: add16(getBC()); return 8;
+        case 0x0A: setA(_bus.read(getBC())); return 8;
         case 0x0B: setBC(getBC() - 1); return 8;
         case 0x0C: setC(inc8(getC())); return 4;
         case 0x0D: setC(dec8(getC())); return 4;
+        case 0x0E: setC(fetchByte()); return 8;
         case 0x0F: { //RRCA
             uint8_t bit0 = getA() & 1;
             setA((getA() >> 1) | (bit0 << 7));
@@ -333,9 +337,11 @@ int CPU::execute(uint8_t opcode) {
             return 4;
         }
         case 0x11: setDE(fetchWord()); return 12;
+        case 0x12: _bus.write(getDE(), getA()); return 8;
         case 0x13: setDE(getDE() + 1); return 8;
         case 0x14: setD(inc8(getD())); return 4;
         case 0x15: setD(dec8(getD())); return 4;
+        case 0x16: setD(fetchByte()); return 8;
         case 0x17: { //RLA
             uint8_t oldCarry = getFlagC();
             uint8_t bit7 = (getA() >> 7) & 1;
@@ -347,9 +353,11 @@ int CPU::execute(uint8_t opcode) {
             return 4;
         }
         case 0x19: add16(getDE()); return 8;
+        case 0x1A: setA(_bus.read(getDE())); return 8;
         case 0x1B: setDE(getDE() - 1); return 8;
         case 0x1C: setE(inc8(getE())); return 4;
         case 0x1D: setE(dec8(getE())); return 4;
+        case 0x1E: setE(fetchByte()); return 8;
         case 0x1F: {
             uint8_t oldCarry = getFlagC();
             uint8_t bit0 = getA() & 1;
@@ -361,13 +369,25 @@ int CPU::execute(uint8_t opcode) {
             return 4;
         }
         case 0x21: setHL(fetchWord()); return 12;
+        case 0x22: {  // LD (HL+), A
+            _bus.write(getHL(), getA());   // write at CURRENT HL
+            setHL(getHL() + 1);            // THEN increment HL
+            return 8;
+        }
         case 0x23: setHL(getHL() + 1); return 8;
         case 0x24: setH(inc8(getH())); return 4;
         case 0x25: setH(dec8(getH())); return 4;
+        case 0x26: setH(fetchByte()); return 8;
         case 0x29: add16(getHL()); return 8;
+        case 0x2A: {
+            setA(_bus.read(getHL()));
+            setHL(getHL() + 1);
+            return 8;
+        }
         case 0x2B: setHL(getHL() - 1); return 8;
         case 0x2C: setL(inc8(getL())); return 4;
         case 0x2D: setL(dec8(getL())); return 4;
+        case 0x2E: setL(fetchByte()); return 8;
         case 0x2F: {
             setA(~getA());
             setFlagN(true);
@@ -375,6 +395,11 @@ int CPU::execute(uint8_t opcode) {
             return 4;
         }
         case 0x31: setSP(fetchWord()); return 12;
+        case 0x32: {  // LD (HL-), A
+            _bus.write(getHL(), getA());   // write at CURRENT HL
+            setHL(getHL() - 1);            // THEN subtract HL
+            return 8;
+        }
         case 0x33: setSP(getSP() + 1); return 8;
         case 0x34: {
             uint8_t v = _bus.read(getHL());
@@ -386,6 +411,11 @@ int CPU::execute(uint8_t opcode) {
             _bus.write(getHL(), dec8(v));
             return 12;
         }
+        case 0x36: {
+            uint8_t value = fetchByte();
+            _bus.write(getHL(), value);
+            return 12;
+        }
         case 0x37: {
             setFlagN(false);
             setFlagH(false);
@@ -393,9 +423,15 @@ int CPU::execute(uint8_t opcode) {
             return 4;
         }
         case 0x39: add16(getSP()); return 8;
+        case 0x3A: {
+            setA(_bus.read(getHL()));
+            setHL(getHL() - 1);
+            return 8;
+        }
         case 0x3B: setSP(getSP() - 1); return 8;
         case 0x3C: setA(inc8(getA())); return 4;
         case 0x3D: setA(dec8(getA())); return 4;
+        case 0x3E: setA(fetchByte()); return 8;
         case 0x3F: {
             setFlagN(false);
             setFlagH(false);
@@ -541,16 +577,38 @@ int CPU::execute(uint8_t opcode) {
         case 0xD5: push(getDE()); return 16;
         case 0xD6: sub8(fetchByte()); return 8;
         case 0xDE: sbc8(fetchByte()); return 8;
+        case 0xE0: {
+            uint8_t offset = fetchByte();
+            _bus.write(0xFF00 + offset, getA());
+            return 12;
+        }
         case 0xE1: setHL(pop()); return 12;
+        case 0xE2: _bus.write(0xFF00 + getC(), getA()); return 8;
         case 0xE5: push(getHL()); return 16;
         case 0xE6: and8(fetchByte()); return 8;
         case 0xE8: setSP(addSPr8()); return 16;
+        case 0xEA: {
+            uint16_t addr = fetchWord();
+            _bus.write(addr, getA());
+            return 16;
+        }
         case 0xEE: xor8(fetchByte()); return 8;
+        case 0xF0: {
+            uint8_t offset = fetchByte();
+            setA(_bus.read(0xFF00 + offset));
+            return 12;
+        }
         case 0xF1: setAF(pop()); return 12;
+        case 0xF2: setA(_bus.read(0xFF00 + getC())); return 8;
         case 0xF5: push(getAF()); return 16;
         case 0xF6: or8(fetchByte()); return 8;
         case 0xF8: setHL(addSPr8()); return 12; 
         case 0xF9: setSP(getHL()); return 8;
+        case 0xFA: {
+            uint16_t addr = fetchWord();
+            setA(_bus.read(addr));
+            return 16;
+        }
         case 0xFE: cp8(fetchByte()); return 8;
         
         default: 
