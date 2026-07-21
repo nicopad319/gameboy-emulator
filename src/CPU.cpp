@@ -974,12 +974,6 @@ uint8_t CPU::srl(uint8_t value) {
     // Z from result, N=0, H=0, C=bit0
 }
 
-
-int CPU::step() {
-    uint8_t opcode = fetchByte();
-    return execute(opcode);
-}
-
 void CPU::logState() {
     char buf[128];
     std::snprintf(buf, sizeof(buf),
@@ -991,4 +985,39 @@ void CPU::logState() {
         _bus.read(getPC() + 2),
         _bus.read(getPC() + 3));
     std::cout << buf;
+}
+
+bool CPU::handleInterrupts() {
+    if (!_ime) {
+        return false;
+    }
+    uint8_t pending = _bus.read(0xFF0F) & _bus.read(0xFFFF);
+    if (pending == 0) {
+        return false;
+    }
+    for (int i = 0; i < 5; i++) {              // 5 interrupts, bits 0-4
+        if (pending & (1 << i)) {              // is bit i set? (mask, not i itself)
+            _ime = false;                      // disable further interrupts
+            uint8_t currentIF = _bus.read(0xFF0F);
+            _bus.write(0xFF0F, currentIF & ~(1 << i));   // clear this interrupt's request bit
+            push(getPC());                     // save return address
+            setPC(static_cast<uint16_t>(0x0040 + i * 8));             // jump to vector
+            return true;                       // serviced one — stop (priority: first match wins)
+        }
+    }
+    return false;   // unreachable (pending != 0 guarantees a bit is found), but satisfies return type
+}
+
+int CPU::step() {
+    if (handleInterrupts()) {
+        _halted = false; // servicing an interrupt also wakes from HALT
+        return 20; // interrupt servicing costs 20 cycles
+    }
+
+    if (_halted) {
+        return 4; // idle cycles; timer/PPU advance, may raise an interrupt to wake us
+    }
+
+    uint8_t opcode = fetchByte();
+    return execute(opcode);
 }

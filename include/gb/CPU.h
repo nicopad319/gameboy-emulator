@@ -130,4 +130,8 @@ private:
     uint8_t sra(uint8_t value);
     uint8_t swap(uint8_t value);
     uint8_t srl(uint8_t value);
+
+
+    //interrupts
+    bool handleInterrupts();
 };

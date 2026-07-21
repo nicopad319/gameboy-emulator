@@ -802,7 +802,58 @@ void runGameboyDoctor(const std::string& romPath) {
     }
 }
 
-// int main() {
+void testInterrupts() {
+    TestSystem sys;
+
+    // --- Core dispatch: VBlank serviced correctly ---
+    sys._cpu.setSP(0xC100);
+    sys._cpu.setPC(0x1234);
+    sys._cpu.execute(0xFB);              // EI -> _ime = true
+    sys._bus.write(0xFFFF, 0x01);        // IE: enable VBlank (bit 0)
+    sys._bus.write(0xFF0F, 0x01);        // IF: request VBlank (bit 0)
+    int cycles = sys._cpu.step();
+    check("VBlank: jumped to vector 0x0040", sys._cpu.getPC(), 0x0040);
+    check("VBlank: 20 cycles", cycles, 20);
+    check("VBlank: IF bit cleared", sys._bus.read(0xFF0F) & 0x01, 0);
+    check("VBlank: SP decremented by 2", sys._cpu.getSP(), 0xC0FE);
+    // return address (old PC 0x1234) should be on the stack; pop it to check
+    check("VBlank: pushed return addr", sys._bus.read(0xC0FE) | (sys._bus.read(0xC0FF) << 8), 0x1234);
+
+    // --- Priority: VBlank beats Timer ---
+    sys._cpu.reset();
+    sys._cpu.setSP(0xC100);
+    sys._cpu.setPC(0x1234);
+    sys._cpu.execute(0xFB);
+    sys._bus.write(0xFFFF, 0x05);        // IE: enable VBlank (bit0) + Timer (bit2)
+    sys._bus.write(0xFF0F, 0x05);        // IF: request both
+    sys._cpu.step();
+    check("Priority: services VBlank not Timer", sys._cpu.getPC(), 0x0040);
+    check("Priority: VBlank bit cleared", sys._bus.read(0xFF0F) & 0x01, 0);
+    check("Priority: Timer bit still pending", sys._bus.read(0xFF0F) & 0x04, 0x04);
+
+    // --- No fire: IME off ---
+    sys._cpu.reset();
+    sys._cpu.setPC(0x1234);
+    // _ime is false after reset (no EI)
+    sys._bus.write(0xFFFF, 0x01);
+    sys._bus.write(0xFF0F, 0x01);
+    // put a NOP at 0x1234 so normal execution has something to run
+    sys._bus.write(0x1234, 0x00);
+    sys._cpu.step();
+    check("IME off: does NOT service (PC not at vector)", sys._cpu.getPC() != 0x0040, true);
+
+    // --- No fire: enabled but not requested ---
+    sys._cpu.reset();
+    sys._cpu.setPC(0x1234);
+    sys._cpu.execute(0xFB);
+    sys._bus.write(0xFFFF, 0x01);        // enabled
+    sys._bus.write(0xFF0F, 0x00);        // NOT requested
+    sys._bus.write(0x1234, 0x00);        // NOP to execute
+    sys._cpu.step();
+    check("Not requested: does NOT service", sys._cpu.getPC() != 0x0040, true);
+}
+
+int main() {
     // testRegisterLoads();
     // testHLLoads();
     // test16BitLoads();
@@ -823,14 +874,15 @@ void runGameboyDoctor(const std::string& romPath) {
     // testControlFlow();
     // testDaa();
     // testCB();
-//     return 0;
-// }
-
-int main(int argc, char* argv[]) {
-    if (argc < 2) {
-        std::cerr << "Usage: gbemu <rom-path>\n";
-        return 1;
-    }
-    runGameboyDoctor(argv[1]);
+    testInterrupts();
     return 0;
 }
+
+// int main(int argc, char* argv[]) {
+//     if (argc < 2) {
+//         std::cerr << "Usage: gbemu <rom-path>\n";
+//         return 1;
+//     }
+//     runGameboyDoctor(argv[1]);
+//     return 0;
+// }

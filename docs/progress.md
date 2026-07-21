@@ -1,5 +1,5 @@
 Session 0 (7/12/26): 
-Set up environment (CMake and everything else) (helped by Claude)
+Set up environment (CMake and everything else)
 
 Session 1 (7/13/26):
 implemented bus and 6/7 components. Saving cartridge for tomorrow since it's the meaty one.
@@ -45,3 +45,11 @@ Implemented TestSystem struct and a testRegisterLoads() method and a testHLLoads
 
 Session 7 (7/19/26):
 implemented and tested about 100 opcodes today. i think 33 or 34 left in the main branch, then onto the 256 more in the Prefix CB branch. will hopefully be done with the CPU either tomorrow or tuesday.
+
+Session 8 (7/20/26):
+Finished all ~500 opcodes including the CB block; built a Gameboy Doctor validation harness; passed every runnable Blargg cpu_instrs sub-test against real hardware (test 2 isn't runnable yet (wait till milestone 5)).
+
+BIG BUG I FIXED (uninitialized memory): While running Blargg's cpu_instrs, Gameboy Doctor showed my emulator's memory diverging from the reference, a WRAM byte read as 0xCC where it should've been 0x00. Every unit test I'd written wrote a value before reading it back, so all my read/write functions were provably correct but they never exercised reading an unwritten cell. The bug: in C++, a default-initialized std::array isn't zeroed, its cells hold indeterminate leftover memory (random garbage). Real programs assume RAM starts zeroed at power-on, so when the test ROM read a WRAM location it hadn't written, my emulator handed back garbage instead of 0x00. 
+
+I originially had std::array<uint8_t, 0x2000> _wram; (no {}).
+Fix: value-initialize the arrays with {} (e.g. std::array<uint8_t, 0x2000> _wram{};), which zeroes every cell. Applied to all memory components. Lesson: uninitialized memory is garbage, not zero so anything that might be read before written must be explicitly initialized, and write-before-read tests can't catch it.

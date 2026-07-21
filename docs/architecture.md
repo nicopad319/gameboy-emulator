@@ -28,7 +28,7 @@ The sm83 (cpu) is 8 bit, so there's no true 16 bit operations done. Every 16 bit
 
 The sm83 is little-endian, so it stores the least significant (lower) byte value at the lower address. So for a 16-byte read starting at address, the byte at address is the lower byte and the byte at address + 1 is the high byte (backwards from how you'd normally write it left to right)
 
-The bit math for combining bytes (read16): you have two separate uint8_t values (lo and hi) and need one uint16_t. Simply adding them (hi + lo) would be wrong — worth thinking through why if you haven't already: what happens if hi = 0x01 and lo = 0x01? Addition gives you 0x02, which is nonsense — you've lost the fact that hi represented the upper 8 bits. Shifting hi left by 8 bits before combining (hi << 8) moves it into the correct bit positions, and OR-ing (|) with lo merges them without any overlap or loss, since after the shift, hi's bits and lo's bits occupy completely different bit positions. (explained by claude)
+The bit math for combining bytes (read16): you have two separate uint8_t values (lo and hi) and need one uint16_t. Simply adding them (hi + lo) would be wrong — worth thinking through why if you haven't already: what happens if hi = 0x01 and lo = 0x01? Addition gives you 0x02, which is nonsense — you've lost the fact that hi represented the upper 8 bits. Shifting hi left by 8 bits before combining (hi << 8) moves it into the correct bit positions, and OR-ing (|) with lo merges them without any overlap or loss, since after the shift, hi's bits and lo's bits occupy completely different bit positions. 
 
 The inverse for write16: splitting a uint16_t back into its component bytes — the low byte is the value's low 8 bits (extracted via mask or truncating cast), the high byte is the value shifted right by 8 bits.
 
@@ -125,3 +125,34 @@ carry flag is left untouched. so only set Flags Z, N, H
 
 adc8/sbc8: add with carry and sub with carry
 basically adds (or subtracts) an extra 1 if the carry flag is set
+
+
+M5: Interrupts
+
+Big Picture: IME/IE/IF
+IME determines if interrupts are allowed or ignored
+IE determines what interrupts are allowed
+IF determines which interrupts have been requested/want to happen
+all have to be set for an interrupt to occur
+Interrupt priority
+
+If multiple interrupts are waiting, service them in this order:
+
+VBlank
+LCD STAT
+Timer
+Serial
+Joypad
+
+Lower bit number = higher priority.
+
+for an interrupt to actually occur: IME && (IE bit set) && (IF bit set)
+
+Once an interrupt occurs:
+1. turn IME off (_ime = false);
+2. the IF bit for the interrupt is cleared
+3. PC is pushed onto the stack
+4. PC is set to the interrupt's vector (VBlank → 0x0040, STAT → 0x0048, Timer → 0x0050, Serial → 0x0058, Joypad → 0x0060).
+5. this whole process takes 20 cycles (5 machine cycles)
+
+-servicing an interrupt is basically an automatic CALL to a fixed vector, plus turning off IME and clearing the request bit
