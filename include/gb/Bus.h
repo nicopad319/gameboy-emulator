@@ -1,3 +1,4 @@
+#pragma once
 #include <cstdint>
 // Forward declarations of classes used in the Bus class (they don't exist yet)
 class Cartridge;
