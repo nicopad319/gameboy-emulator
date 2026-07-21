@@ -796,7 +796,7 @@ void testCB() {
 void runGameboyDoctor(const std::string& romPath) {
     GameBoy gb;
     gb.loadROM(romPath);
-    for (int i = 0; i < 2000000; i++) {   // bounded — cpu_instrs sub-tests finish well within this
+    for (int i = 0; i < 9000000; i++) {   // bounded — cpu_instrs sub-tests finish well within this
         gb.logState();          // need a way to call CPU's logState via GameBoy
         gb.step();
     }
