@@ -81,6 +81,8 @@ public:
 
     uint16_t addSPr8();
 
+    void logState();
+
 
 private:
     uint8_t _a; // Accumulator register

@@ -25,3 +25,7 @@ void GameBoy::write(uint16_t address, uint8_t value) {
 int GameBoy::step() {
     return _cpu.step();
 }
+
+void GameBoy::logState() {
+    _cpu.logState();
+}

@@ -22,6 +22,8 @@ public:
 
     int step();
 
+    void logState();
+
 private:
     PPU _ppu; //depends on nothing (is a stub) must be declared first
     Cartridge _cartridge;

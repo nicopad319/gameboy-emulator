@@ -793,7 +793,16 @@ void testCB() {
     check("RLC (HL) is 16 cycles", cycles, 16);
 }
 
-int main() {
+void runGameboyDoctor(const std::string& romPath) {
+    GameBoy gb;
+    gb.loadROM(romPath);
+    for (int i = 0; i < 2000000; i++) {   // bounded — cpu_instrs sub-tests finish well within this
+        gb.logState();          // need a way to call CPU's logState via GameBoy
+        gb.step();
+    }
+}
+
+// int main() {
     // testRegisterLoads();
     // testHLLoads();
     // test16BitLoads();
@@ -813,7 +822,15 @@ int main() {
     // testRotates();
     // testControlFlow();
     // testDaa();
-    testCB();
+    // testCB();
+//     return 0;
+// }
+
+int main(int argc, char* argv[]) {
+    if (argc < 2) {
+        std::cerr << "Usage: gbemu <rom-path>\n";
+        return 1;
+    }
+    runGameboyDoctor(argv[1]);
     return 0;
 }
-

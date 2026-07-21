@@ -980,3 +980,15 @@ int CPU::step() {
     return execute(opcode);
 }
 
+void CPU::logState() {
+    char buf[128];
+    std::snprintf(buf, sizeof(buf),
+        "A:%02X F:%02X B:%02X C:%02X D:%02X E:%02X H:%02X L:%02X SP:%04X PC:%04X PCMEM:%02X,%02X,%02X,%02X\n",
+        getA(), getF(), getB(), getC(), getD(), getE(), getH(), getL(),
+        getSP(), getPC(),
+        _bus.read(getPC()),
+        _bus.read(getPC() + 1),
+        _bus.read(getPC() + 2),
+        _bus.read(getPC() + 3));
+    std::cout << buf;
+}
