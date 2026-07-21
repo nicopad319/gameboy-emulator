@@ -694,6 +694,105 @@ void testDaa() {
     check("DAA c4 C", sys._cpu.getFlagC(), false);
 }
 
+void testCB() {
+    TestSystem sys;
+
+    // Helper pattern: put CB opcode byte at PC, execute(0xCB) fetches it.
+
+    // --- RLC B (0x00): rotate left circular ---
+    sys._cpu.setB(0x80);
+    sys._bus.write(0xC000, 0x00);
+    sys._cpu.setPC(0xC000);
+    int cycles = sys._cpu.execute(0xCB);
+    check("RLC B: 0x80 -> 0x01", sys._cpu.getB(), 0x01);
+    check("RLC B C flag", sys._cpu.getFlagC(), true);
+    check("RLC B cycles", cycles, 8);
+
+    // --- CB rotates SET Z (unlike accumulator RLCA) ---
+    sys._cpu.reset();
+    sys._cpu.setB(0x00);
+    sys._bus.write(0xC000, 0x00);        // RLC B
+    sys._cpu.setPC(0xC000);
+    sys._cpu.execute(0xCB);
+    check("RLC B on 0x00 sets Z=1 (CB differs from RLCA)", sys._cpu.getFlagZ(), true);
+
+    // --- Dispatch: same op, different register (RLC C = 0x01) ---
+    sys._cpu.reset();
+    sys._cpu.setC(0x80);
+    sys._bus.write(0xC000, 0x01);        // RLC C
+    sys._cpu.setPC(0xC000);
+    sys._cpu.execute(0xCB);
+    check("RLC C routes to C register", sys._cpu.getC(), 0x01);
+
+    // --- SRA vs SRL discriminator on 0x80 ---
+    sys._cpu.reset();
+    sys._cpu.setB(0x80);
+    sys._bus.write(0xC000, 0x28);        // SRA B (op 5 << 3 | reg 0 = 0x28)
+    sys._cpu.setPC(0xC000);
+    sys._cpu.execute(0xCB);
+    check("SRA B: 0x80 -> 0xC0 (bit7 preserved)", sys._cpu.getB(), 0xC0);
+
+    sys._cpu.reset();
+    sys._cpu.setB(0x80);
+    sys._bus.write(0xC000, 0x38);        // SRL B (op 7 << 3 | reg 0 = 0x38)
+    sys._cpu.setPC(0xC000);
+    sys._cpu.execute(0xCB);
+    check("SRL B: 0x80 -> 0x40 (bit7 zeroed)", sys._cpu.getB(), 0x40);
+
+    // --- SWAP B (0x30) ---
+    sys._cpu.reset();
+    sys._cpu.setB(0xAB);
+    sys._bus.write(0xC000, 0x30);        // SWAP B (op 6 << 3 | reg 0)
+    sys._cpu.setPC(0xC000);
+    sys._cpu.execute(0xCB);
+    check("SWAP B: 0xAB -> 0xBA", sys._cpu.getB(), 0xBA);
+    check("SWAP B clears C", sys._cpu.getFlagC(), false);
+
+    // --- BIT: both Z directions ---
+    // BIT 7, B (0x40 | 7<<3 | 0 = 0x78) on B=0x80 -> bit set -> Z=0
+    sys._cpu.reset();
+    sys._cpu.setB(0x80);
+    sys._bus.write(0xC000, 0x78);        // BIT 7, B
+    sys._cpu.setPC(0xC000);
+    sys._cpu.execute(0xCB);
+    check("BIT 7,B (bit set) -> Z=0", sys._cpu.getFlagZ(), false);
+    check("BIT sets H=1", sys._cpu.getFlagH(), true);
+
+    // BIT 0, B (0x40 | 0<<3 | 0 = 0x40) on B=0x80 -> bit clear -> Z=1
+    sys._cpu.reset();
+    sys._cpu.setB(0x80);
+    sys._bus.write(0xC000, 0x40);        // BIT 0, B
+    sys._cpu.setPC(0xC000);
+    sys._cpu.execute(0xCB);
+    check("BIT 0,B (bit clear) -> Z=1", sys._cpu.getFlagZ(), true);
+
+    // --- RES 7, B (0x80 | 7<<3 | 0 = 0xB8) on 0xFF -> 0x7F ---
+    sys._cpu.reset();
+    sys._cpu.setB(0xFF);
+    sys._bus.write(0xC000, 0xB8);        // RES 7, B
+    sys._cpu.setPC(0xC000);
+    sys._cpu.execute(0xCB);
+    check("RES 7,B: 0xFF -> 0x7F", sys._cpu.getB(), 0x7F);
+
+    // --- SET 3, B (0xC0 | 3<<3 | 0 = 0xD8) on 0x00 -> 0x08 ---
+    sys._cpu.reset();
+    sys._cpu.setB(0x00);
+    sys._bus.write(0xC000, 0xD8);        // SET 3, B
+    sys._cpu.setPC(0xC000);
+    sys._cpu.execute(0xCB);
+    check("SET 3,B: 0x00 -> 0x08", sys._cpu.getB(), 0x08);
+
+    // --- (HL) target: RLC (HL) = 0x06, and check 16 cycles ---
+    sys._cpu.reset();
+    sys._cpu.setHL(0xC500);
+    sys._bus.write(0xC500, 0x80);        // value in memory
+    sys._bus.write(0xC000, 0x06);        // RLC (HL)
+    sys._cpu.setPC(0xC000);
+    cycles = sys._cpu.execute(0xCB);
+    check("RLC (HL): mem 0x80 -> 0x01", sys._bus.read(0xC500), 0x01);
+    check("RLC (HL) is 16 cycles", cycles, 16);
+}
+
 int main() {
     // testRegisterLoads();
     // testHLLoads();
@@ -713,7 +812,8 @@ int main() {
     // testAddSPr8();
     // testRotates();
     // testControlFlow();
-    testDaa();
+    // testDaa();
+    testCB();
     return 0;
 }
 

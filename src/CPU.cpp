@@ -686,6 +686,7 @@ int CPU::execute(uint8_t opcode) {
             }
             return 12;                        // branch not taken
         }
+        case 0xCB: return executeCB(fetchByte());
         case 0xCC: {  // CALL Z, a16
             uint16_t addr = fetchWord();    // ALWAYS fetch
             if (getFlagZ()) {
@@ -809,10 +810,173 @@ int CPU::execute(uint8_t opcode) {
     }
 }
 
+uint8_t CPU::getReg(uint8_t index) {
+    switch (index) {
+        case 0: return getB();
+        case 1: return getC();
+        case 2: return getD();
+        case 3: return getE();
+        case 4: return getH();
+        case 5: return getL();
+        case 6: return _bus.read(getHL());   // (HL) — memory, not a register
+        case 7: return getA();
+        default: 
+            std::cerr << "Unreachable register" << std::endl;
+            throw std::runtime_error("Unreachable register");
+    }
+}
+
+void CPU::setReg(uint8_t index, uint8_t value) {
+    switch (index) {
+        case 0: setB(value); break;
+        case 1: setC(value); break;
+        case 2: setD(value); break;
+        case 3: setE(value); break;
+        case 4: setH(value); break;
+        case 5: setL(value); break;
+        case 6: _bus.write(getHL(), value); break;   // write to (HL)
+        case 7: setA(value); break;
+        default:
+            std::cerr << "Unreachable register" << std::endl;
+            throw std::runtime_error("Unreachable register");
+    }
+}
+
+int CPU::executeCB(uint8_t opcode) {
+    uint8_t reg   = opcode & 0x07;        // target register index
+    uint8_t value = getReg(reg);          // read target once
+    bool isHL     = (reg == 6);           // (HL) target costs more cycles
+
+    if (opcode < 0x40) {
+        // rotate/shift ops — operation selector is bits 5-3
+        uint8_t result;
+        switch ((opcode >> 3) & 0x07) {
+            case 0: result = rlc(value);  break;
+            case 1: result = rrc(value);  break;
+            case 2: result = rl(value);   break;
+            case 3: result = rr(value);   break;
+            case 4: result = sla(value);  break;
+            case 5: result = sra(value);  break;
+            case 6: result = swap(value); break;
+            case 7: result = srl(value);  break;
+            default:
+                throw std::runtime_error("unreachable CB rotate/shift op");
+        }
+        setReg(reg, result);
+        return isHL ? 16 : 8;
+    }
+    else if (opcode < 0x80) {
+        // BIT b, r
+        uint8_t bit = (opcode >> 3) & 0x07;
+        // ... test bit `bit` of `value`, set flags, NO writeback ...
+        setFlagZ((value & (1 << bit)) == 0);
+        setFlagN(false);
+        setFlagH(true);
+        //dont touch flag C
+        return isHL ? 12 : 8;
+    }
+    else if (opcode < 0xC0) {
+        // RES b, r — clear bit
+        uint8_t bit = (opcode >> 3) & 0x07;
+        setReg(reg, value & ~(1 << bit));
+        return isHL ? 16 : 8;
+    }
+    else {
+        // SET b, r — set bit
+        uint8_t bit = (opcode >> 3) & 0x07;
+        setReg(reg, value | (1 << bit));
+        return isHL ? 16 : 8;
+    }
+}
+
+uint8_t CPU::rlc(uint8_t value) {
+    uint8_t bit7 = (value >> 7) & 1;        // bit 7 of the INPUT
+    uint8_t result = (value << 1) | bit7;   // rotate left, wrap bit7 to bit0
+    setFlagZ(result == 0);                  // CB version: Z from result
+    setFlagN(false);
+    setFlagH(false);
+    setFlagC(bit7);                         // C = old bit 7
+    return result;                          // return the rotated BYTE
+}
+
+uint8_t CPU::rrc(uint8_t value) {
+    uint8_t bit0 = value & 1;       
+    uint8_t result = (value >> 1) | (bit0 << 7);  
+    setFlagZ(result == 0);
+    setFlagN(false);
+    setFlagH(false);
+    setFlagC(bit0);                         
+    return result;                          
+}
+
+uint8_t CPU::rl(uint8_t value) {
+    uint8_t oldCarry = getFlagC();
+    uint8_t bit7 = (value >> 7) & 1;
+    uint8_t result = (value << 1) | oldCarry;
+    setFlagZ(result == 0);                  // CB version: Z from result
+    setFlagN(false);
+    setFlagH(false);
+    setFlagC(bit7);                         // C = old bit 7
+    return result; 
+}
+
+uint8_t CPU::rr(uint8_t value) {
+    uint8_t oldCarry = getFlagC();
+    uint8_t bit0 = value & 1;
+    uint8_t result = (value >> 1) | (oldCarry << 7);
+    setFlagZ(result == 0);                  // CB version: Z from result
+    setFlagN(false);
+    setFlagH(false);
+    setFlagC(bit0); 
+    return result;
+}
+
+uint8_t CPU::sla(uint8_t value) {
+    uint8_t bit7 = (value >> 7) & 1;
+    uint8_t result = value << 1;        // bit 0 becomes 0
+    setFlagZ(result == 0);
+    setFlagN(false);
+    setFlagH(false);
+    setFlagC(bit7);
+    return result;
+    // Z from result, N=0, H=0, C=bit7
+}
+
+uint8_t CPU::sra(uint8_t value) {
+    uint8_t bit0 = value & 1;
+    uint8_t result = (value >> 1) | (value & 0x80);   // top bit kept
+    setFlagZ(result == 0);
+    setFlagN(false);
+    setFlagH(false);
+    setFlagC(bit0);
+    return result;
+    // Z from result, N=0, H=0, C=bit0
+}
+
+uint8_t CPU::swap(uint8_t value) {
+    uint8_t result = (value << 4) | (value >> 4);   // high<->low nibble
+    setFlagZ(result == 0);
+    setFlagN(false);
+    setFlagH(false);
+    setFlagC(false);
+    return result;
+    // Z from result, N=0, H=0, C=0   (swap CLEARS carry)
+}
+
+uint8_t CPU::srl(uint8_t value) {
+    uint8_t bit0 = value & 1;
+    uint8_t result = value >> 1;        // bit 7 becomes 0
+    setFlagZ(result == 0);
+    setFlagN(false);
+    setFlagH(false);
+    setFlagC(bit0);
+    return result;
+    // Z from result, N=0, H=0, C=bit0
+}
+
+
 int CPU::step() {
     uint8_t opcode = fetchByte();
     return execute(opcode);
 }
-
-
 

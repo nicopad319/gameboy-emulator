@@ -81,6 +81,7 @@ public:
 
     uint16_t addSPr8();
 
+
 private:
     uint8_t _a; // Accumulator register
     uint8_t _f; // Flags register
@@ -111,4 +112,20 @@ private:
 
     bool _ime;
     bool _halted;
+
+    int executeCB(uint8_t opcode);
+
+    uint8_t getReg(uint8_t index);
+    void setReg(uint8_t index, uint8_t value);
+
+    uint8_t rlc(uint8_t value);
+    uint8_t rrc(uint8_t value);
+    uint8_t rl(uint8_t value);
+    uint8_t rr(uint8_t value);
+
+
+    uint8_t sla(uint8_t value);
+    uint8_t sra(uint8_t value);
+    uint8_t swap(uint8_t value);
+    uint8_t srl(uint8_t value);
 };
