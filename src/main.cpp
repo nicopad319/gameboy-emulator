@@ -807,8 +807,8 @@ void testCB() {
 void runGameboyDoctor(const std::string& romPath) {
     GameBoy gb;
     gb.loadROM(romPath);
-    for (int i = 0; i < 9000000; i++) {   // bounded — cpu_instrs sub-tests finish well within this
-        gb.logState();          // need a way to call CPU's logState via GameBoy
+    gb.enableCpuLogging();   // sets _cpu._loggingEnabled = true (add this delegation)
+    for (int i = 0; i < 9000000; i++) {
         gb.step();
     }
 }
@@ -922,7 +922,7 @@ void testTimerInterrupt() {
     check("Disabled timer does NOT fire", firedWhileDisabled, false);
 }
 
-int main() {
+// int main() {
     // testRegisterLoads();
     // testHLLoads();
     // test16BitLoads();
@@ -944,15 +944,15 @@ int main() {
     // testDaa();
     // testCB();
     // testInterrupts();
-    testTimerInterrupt();
-    return 0;
-}
-
-// int main(int argc, char* argv[]) {
-//     if (argc < 2) {
-//         std::cerr << "Usage: gbemu <rom-path>\n";
-//         return 1;
-//     }
-//     runGameboyDoctor(argv[1]);
+//     testTimerInterrupt();
 //     return 0;
 // }
+
+int main(int argc, char* argv[]) {
+    if (argc < 2) {
+        std::cerr << "Usage: gbemu <rom-path>\n";
+        return 1;
+    }
+    runGameboyDoctor(argv[1]);
+    return 0;
+}

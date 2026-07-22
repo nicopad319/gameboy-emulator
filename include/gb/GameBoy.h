@@ -27,6 +27,8 @@ public:
 
     void requestInterrupt(int bit);
 
+    void enableCpuLogging();
+
 
 private:
     PPU _ppu; //depends on nothing (is a stub) must be declared first

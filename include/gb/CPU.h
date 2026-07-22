@@ -83,6 +83,8 @@ public:
 
     void logState();
 
+    void enableLogging();
+
 
 private:
     uint8_t _a; // Accumulator register
@@ -134,4 +136,9 @@ private:
 
     //interrupts
     bool handleInterrupts();
+    bool interruptPending();   // IE & IF != 0, independent of IME — used to wake from HALT
+    
+    bool _loggingEnabled = false;
+
+    bool _imeScheduled;
 };

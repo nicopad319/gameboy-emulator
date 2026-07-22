@@ -38,3 +38,7 @@ int GameBoy::step() {
     }
     return cycles;
 }
+
+void GameBoy::enableCpuLogging() {
+    _cpu.enableLogging();
+}

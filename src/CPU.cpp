@@ -21,6 +21,7 @@ void CPU::reset() {
     _pc = 0x0100; //execution entry point on game cartridge
     _ime = false;
     _halted = false;
+    _imeScheduled = false;
 }
 
 //8 bit getter functions
@@ -796,7 +797,7 @@ int CPU::execute(uint8_t opcode) {
             setA(_bus.read(addr));
             return 16;
         }
-        case 0xFB: _ime = true; return 4;   // TODO: EI has a 1-instruction delay
+        case 0xFB: _imeScheduled = true; return 4;
         case 0xFE: cp8(fetchByte()); return 8;
         case 0xFF: push(getPC()); setPC(0x0038); return 16;
         
@@ -1008,16 +1009,37 @@ bool CPU::handleInterrupts() {
     return false;   // unreachable (pending != 0 guarantees a bit is found), but satisfies return type
 }
 
+bool CPU::interruptPending() {
+    return (_bus.read(0xFF0F) & _bus.read(0xFFFF) & 0x1F) != 0;
+}
+
 int CPU::step() {
-    if (handleInterrupts()) {
-        _halted = false; // servicing an interrupt also wakes from HALT
-        return 20; // interrupt servicing costs 20 cycles
+    if (interruptPending()) {
+        _halted = false;   // HALT wakes on any pending interrupt, regardless of IME
     }
 
     if (_halted) {
-        return 4; // idle cycles; timer/PPU advance, may raise an interrupt to wake us
+        return 4;   // still asleep — nothing changed, don't log
     }
 
+    if (_loggingEnabled) logState();
+
+    int interruptCycles = 0;
+    if (handleInterrupts()) {
+        interruptCycles = 20;
+    }
+
+    bool willEnableIME = _imeScheduled;
+    _imeScheduled = false;
+
     uint8_t opcode = fetchByte();
-    return execute(opcode);
+    int cycles = execute(opcode);
+
+    if (willEnableIME) _ime = true;
+    return interruptCycles + cycles;
+}
+
+
+void CPU::enableLogging() {
+    _loggingEnabled = true;
 }
