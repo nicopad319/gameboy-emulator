@@ -123,9 +123,9 @@ struct TestSystem {
     TestSystem()          // ← inside the braces
         : _vram(&_ppu),
           _oam(&_ppu),
-          _bus(&_cartridge, &_wram, &_ioRegisters, &_vram, &_hram, &_ieRegister, &_oam, &_timer),
+          _bus(&_cartridge, &_wram, &_ioRegisters, &_vram, &_hram, &_ieRegister, &_oam, &_timer, &_ppu),
           _cpu(_bus)
-    {}
+    {_ppu.connectVRAM(&_vram);}
 
     int step() {
         int cycles = _cpu.step();
@@ -954,6 +954,96 @@ void testDiv() {
     check("TIMA stays 0 while disabled", sys._bus.read(0xFF05), 0x00);
 }
 
+static int advanceDots(PPU& ppu, int dots) {
+    int vblankCount = 0;
+    for (int i = 0; i < dots; i += 4) {
+        uint8_t irq = ppu.tick(4);
+        if (irq & 0x01) {
+            vblankCount++;
+        }
+    }
+    return vblankCount;
+}
+
+void testPpuTiming() {
+    PPU ppu;   // standalone — the timing model needs nothing else
+
+    // A freshly constructed PPU begins line 0 in OAM scan.
+    check("initial mode is OAM scan", static_cast<int>(ppu.getCurrentMode()), 2);
+    check("initial LY is 0",          static_cast<int>(ppu.getLY()), 0);
+
+    // --- One scanline, mode by mode ---
+    advanceDots(ppu, 80);
+    check("dot 80: entered Drawing",  static_cast<int>(ppu.getCurrentMode()), 3);
+    check("dot 80: LY unchanged",     static_cast<int>(ppu.getLY()), 0);
+
+    advanceDots(ppu, 172);   // cumulative 252
+    check("dot 252: entered HBlank",  static_cast<int>(ppu.getCurrentMode()), 0);
+    check("dot 252: LY unchanged",    static_cast<int>(ppu.getLY()), 0);
+
+    advanceDots(ppu, 204);   // cumulative 456 — line 0 finished
+    check("dot 456: back to OAM scan",static_cast<int>(ppu.getCurrentMode()), 2);
+    check("dot 456: LY advanced to 1",static_cast<int>(ppu.getLY()), 1);
+
+    // --- Run to the top of VBlank ---
+    // 143 more full lines carries LY from 1 up to 144 (144 * 456 dots total).
+    int vblanksToVBlank = advanceDots(ppu, 143 * 456);
+    check("LY 144: mode is VBlank",   static_cast<int>(ppu.getCurrentMode()), 1);
+    check("LY 144: LY is 144",        static_cast<int>(ppu.getLY()), 144);
+    check("VBlank IRQ raised exactly once entering VBlank", vblanksToVBlank, 1);
+
+    // --- Run the 10 VBlank lines to end of frame ---
+    // 70224 dots per frame; 65664 elapsed; 4560 remain.
+    int vblanksInBlank = advanceDots(ppu, 4560);
+    check("frame end: LY wrapped to 0",     static_cast<int>(ppu.getLY()), 0);
+    check("frame end: mode is OAM scan",    static_cast<int>(ppu.getCurrentMode()), 2);
+    check("no VBlank IRQ during blanking",  vblanksInBlank, 0);
+
+    // --- A second frame must behave identically ---
+    int vblanksFrame2 = advanceDots(ppu, 70224);
+    check("frame 2: VBlank IRQ raised exactly once", vblanksFrame2, 1);
+    check("frame 2 end: LY is 0",           static_cast<int>(ppu.getLY()), 0);
+    check("frame 2 end: mode is OAM scan",  static_cast<int>(ppu.getCurrentMode()), 2);
+}
+
+void testTileDecode() {
+    uint8_t row[8];
+    PPU::decodeTileRow(0x3C, 0x7E, row);
+    uint8_t expected[8] = {0, 2, 3, 3, 3, 3, 2, 0};
+    for (int x = 0; x < 8; ++x) {
+        check("tile decode pixel", static_cast<int>(row[x]),
+                                    static_cast<int>(expected[x]));
+    }
+}
+
+void testBackgroundRender() {
+    PPU ppu;
+    VRAM vram(&ppu);           // VRAM needs a real PPU ptr (its lock reads getCurrentMode)
+    ppu.connectVRAM(&vram);
+
+    // Tile #1, row 0 = the bytes we hand-decoded (-> 0 2 3 3 3 3 2 0).
+    vram.write(0x8000 + 1 * 16 + 0, 0x3C);   // low plane
+    vram.write(0x8000 + 1 * 16 + 1, 0x7E);   // high plane
+
+    // Tilemap 0x9800, cell (0,0) -> tile #1.
+    vram.write(0x9800, 0x01);
+
+    ppu.writeRegister(0xFF40, 0x91);   // LCDC: LCD on, unsigned tiledata @0x8000, map @0x9800, BG on
+    ppu.writeRegister(0xFF47, 0xE4);   // BGP identity: index i -> shade i
+    ppu.writeRegister(0xFF42, 0x00);   // SCY
+    ppu.writeRegister(0xFF43, 0x00);   // SCX
+
+    for (int i = 0; i < 64; ++i) {     // ~256 dots -> past dot 252, renders line 0
+        ppu.tick(4);
+    }
+
+    const auto& fb = ppu.getFramebuffer();
+    uint8_t expected[8] = {0, 2, 3, 3, 3, 3, 2, 0};
+    for (int x = 0; x < 8; ++x) {
+        check("bg render pixel", static_cast<int>(fb[x]), static_cast<int>(expected[x]));
+    }
+}
+
 // int main() {
     // testRegisterLoads();
     // testHLLoads();
@@ -978,16 +1068,37 @@ void testDiv() {
     // testInterrupts();
 //     testTimerInterrupt();
 //     testDiv();
+//     testPpuTiming();
+//     testTileDecode();
+    // testBackgroundRender();
 //     return 0;
 // }
+
+
+//screenshot writer
+#include <fstream>
+#include <array>
+#include <string>
+
+void writeFramebufferPPM(const std::array<uint8_t, 160 * 144>& fb, const std::string& path) {
+    static const uint8_t palette[4][3] = {   // shade 0 (lightest) .. 3 (darkest)
+        {155, 188, 15}, {139, 172, 15}, {48, 98, 48}, {15, 56, 15}
+    };
+    std::ofstream out(path, std::ios::binary);
+    out << "P6\n160 144\n255\n";
+    for (int i = 0; i < 160 * 144; ++i) {
+        out.write(reinterpret_cast<const char*>(palette[fb[i] & 0x03]), 3);
+    }
+}
 
 void runRom(const std::string& romPath) {
     GameBoy gb;
     gb.loadROM(romPath);
     // NO enableCpuLogging() — we want serial output, not a state log
-    for (long long i = 0; i < 2000000000LL; i++) {   // 2 billion — note: long long, not int {   // generous cap; combined ROM is long
+    for (long long i = 0; i < 50'000'000LL; i++) {
         gb.step();
     }
+    writeFramebufferPPM(gb.getFramebuffer(), "frame.ppm");
 }
 
 int main(int argc, char* argv[]) {

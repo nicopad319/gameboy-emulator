@@ -29,6 +29,8 @@ public:
 
     void enableCpuLogging();
 
+    const auto& getFramebuffer() const { return _ppu.getFramebuffer(); } 
+
 
 private:
     PPU _ppu; //depends on nothing (is a stub) must be declared first

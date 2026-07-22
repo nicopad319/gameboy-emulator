@@ -7,6 +7,7 @@
 #include "IERegister.h"
 #include "OAM.h"
 #include "Timer.h"
+#include "PPU.h"
 
 
 Bus::Bus(Cartridge* cartridge, 
@@ -16,7 +17,8 @@ Bus::Bus(Cartridge* cartridge,
            HRAM* hram,
            IERegister* ieRegister,
            OAM* oam,
-           Timer* timer)
+           Timer* timer,
+           PPU* ppu)
             : _cartridge(cartridge),
             _wram(wram),
             _ioRegisters(ioRegisters),
@@ -25,6 +27,7 @@ Bus::Bus(Cartridge* cartridge,
             _ieRegister(ieRegister),
             _oam(oam),
             _timer(timer),
+            _ppu(ppu),
             _cycles(0) // Initialize cycles to 0
 {
     // Constructor body can be empty since we are using an initializer list
@@ -49,6 +52,9 @@ uint8_t Bus::read(uint16_t address) {
     } else if (address < 0xFF80) {
         if (address >= 0xFF04 && address <= 0xFF07) {
             return _timer->read(address);
+        }
+        if (address >= 0xFF40 && address <= 0xFF4B) {
+            return _ppu->readRegister(address);
         }
         return _ioRegisters->read(address);
     } else if (address < 0xFFFF) {
@@ -76,6 +82,8 @@ void Bus::write(uint16_t address, uint8_t value) {
     } else if (address < 0xFF80) {
         if (address >= 0xFF04 && address <= 0xFF07) {
             _timer->write(address, value);
+        } else if (address >= 0xFF40 && address <= 0xFF4B) {
+        _ppu->writeRegister(address, value);
         } else {
         _ioRegisters->write(address, value);
         }
