@@ -3,7 +3,7 @@
 GameBoy::GameBoy()
         : _vram(&_ppu), // Initialize VRAM with a pointer to PPU
           _oam(&_ppu), // Initialize OAM with a pointer to PPU
-          _bus(&_cartridge, &_wram, &_ioRegisters, &_vram, &_hram, &_ieRegister, &_oam), // Initialize Bus with pointers to all components
+          _bus(&_cartridge, &_wram, &_ioRegisters, &_vram, &_hram, &_ieRegister, &_oam, &_timer), // Initialize Bus with pointers to all components
           _cpu(_bus)
         {
             //empty body
@@ -22,10 +22,19 @@ void GameBoy::write(uint16_t address, uint8_t value) {
     _bus.write(address, value);
 }
 
-int GameBoy::step() {
-    return _cpu.step();
-}
-
 void GameBoy::logState() {
     _cpu.logState();
+}
+
+void GameBoy::requestInterrupt(int bit) {
+    uint8_t current = _bus.read(0xFF0F);
+    _bus.write(0xFF0F, current | (1 << bit));
+}
+
+int GameBoy::step() {
+    int cycles = _cpu.step();
+    if (_timer.tick(cycles)) {       // tick returns true on TIMA overflow
+        requestInterrupt(2);         // Timer interrupt = bit 2
+    }
+    return cycles;
 }

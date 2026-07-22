@@ -8,6 +8,7 @@ class VRAM;
 class HRAM;
 class IERegister;
 class OAM;
+class Timer;
 
 class Bus {
 public:
@@ -17,7 +18,8 @@ public:
             VRAM* vram,
             HRAM* hram,
             IERegister* ieRegister,
-            OAM* oam);
+            OAM* oam,
+            Timer* timer);
 
     uint8_t read(uint16_t address);
     void write(uint16_t address, uint8_t value);
@@ -34,5 +36,6 @@ private:
     HRAM* _hram;
     IERegister* _ieRegister;
     OAM* _oam;
+    Timer* _timer;
     uint64_t _cycles; //uint64_t to avoid overflow when counting cycles, potentially billions of cycles in a long-running emulation
 };

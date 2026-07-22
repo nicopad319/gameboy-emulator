@@ -9,6 +9,7 @@
 #include "VRAM.h"
 #include "WRAM.h"
 #include "CPU.h"
+#include "Timer.h"
 #include <string>
 #include <cstdint>
 
@@ -24,6 +25,9 @@ public:
 
     void logState();
 
+    void requestInterrupt(int bit);
+
+
 private:
     PPU _ppu; //depends on nothing (is a stub) must be declared first
     Cartridge _cartridge;
@@ -33,6 +37,7 @@ private:
     IERegister _ieRegister;
     VRAM _vram; //depends on PPU so must be declared after it
     OAM _oam; //also depends on PPU
+    Timer _timer;
     Bus _bus; //depends on everything so must be declared last
     CPU _cpu; //holds a bus so must come after bus
 };

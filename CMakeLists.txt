@@ -17,6 +17,7 @@ add_executable(gbemu
     src/PPU.cpp
     src/GameBoy.cpp
     src/CPU.cpp
+    src/Timer.cpp
 )
 
 target_include_directories(gbemu PRIVATE include/gb)

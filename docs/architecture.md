@@ -156,3 +156,19 @@ Once an interrupt occurs:
 5. this whole process takes 20 cycles (5 machine cycles)
 
 -servicing an interrupt is basically an automatic CALL to a fixed vector, plus turning off IME and clearing the request bit
+
+
+now that interrupt system has been written, it's time to implement the timer since that's what actually generates interrupts
+
+The Game Boy timer is four memory-mapped registers (0xFF04–0xFF07):
+
+DIV (0xFF04) — Divider. A counter that increments continuously at a fixed rate (16384 Hz). Reading it gives the current value; writing any value resets it to 0. It runs always, regardless of settings.
+TIMA (0xFF05) — Timer Counter. The main counter. Increments at a rate you configure. When it overflows (goes past 0xFF), it requests a Timer interrupt (sets IF bit 2) and reloads from TMA.
+TMA (0xFF06) — Timer Modulo. The reload value TIMA gets when it overflows. (So you can make TIMA count a specific range.)
+TAC (0xFF07) — Timer Control. Enables/disables the timer and selects TIMA's increment rate (one of four frequencies).
+
+basically, as cycles pass (from CPU), DIV increments steadily and if the timer is enabled in TAC, TIMA increments at the selected rate. when TIMA overflows it fires the TIMER interrupt (IF bit 2).
+
+cycles → TIMA overflow → IF bit 2 set → next step, handleInterrupts services it → jump to 0x0050
+
+The key architectural piece: the timer needs to advance based on elapsed cycles, and cycles come from the CPU's step() return value. So there's a tick(cycles) method on the timer that the outer loop calls after each step(), advancing DIV and TIMA by that many cycles
