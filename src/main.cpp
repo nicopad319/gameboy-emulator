@@ -922,6 +922,38 @@ void testTimerInterrupt() {
     check("Disabled timer does NOT fire", firedWhileDisabled, false);
 }
 
+void testDiv() {
+    TestSystem sys;
+
+    // --- DIV increments every 256 cycles ---
+    sys._bus.write(0xFF04, 0x00);         // reset DIV to 0 (write-resets quirk)
+    sys._timer.tick(256);                 // exactly one DIV increment
+    check("DIV increments after 256 cycles", sys._bus.read(0xFF04), 0x01);
+
+    sys._timer.tick(256);                 // second increment
+    check("DIV = 2 after another 256", sys._bus.read(0xFF04), 0x02);
+
+    sys._timer.tick(255);                 // just under a third increment
+    check("DIV unchanged at 255 more (sub-threshold)", sys._bus.read(0xFF04), 0x02);
+    sys._timer.tick(1);                   // crosses the threshold
+    check("DIV = 3 after the 256th cycle", sys._bus.read(0xFF04), 0x03);
+
+    // --- Writing ANY value to DIV resets it to 0 ---
+    sys._bus.write(0xFF04, 0xAB);         // value ignored — resets to 0
+    check("DIV write resets to 0", sys._bus.read(0xFF04), 0x00);
+
+    // --- DIV counts even when the timer (TIMA) is DISABLED ---
+    sys._bus.write(0xFF04, 0x00);         // reset DIV
+    sys._bus.write(0xFF07, 0x00);         // TAC = 0: timer disabled (bit 2 clear)
+    sys._timer.tick(256);
+    check("DIV counts even when TIMA disabled", sys._bus.read(0xFF04), 0x01);
+
+    // --- Confirm TIMA did NOT count while disabled (sanity cross-check) ---
+    sys._bus.write(0xFF05, 0x00);         // TIMA = 0
+    sys._timer.tick(1024);                // would be plenty to increment TIMA if enabled
+    check("TIMA stays 0 while disabled", sys._bus.read(0xFF05), 0x00);
+}
+
 // int main() {
     // testRegisterLoads();
     // testHLLoads();
@@ -945,14 +977,24 @@ void testTimerInterrupt() {
     // testCB();
     // testInterrupts();
 //     testTimerInterrupt();
+//     testDiv();
 //     return 0;
 // }
+
+void runRom(const std::string& romPath) {
+    GameBoy gb;
+    gb.loadROM(romPath);
+    // NO enableCpuLogging() — we want serial output, not a state log
+    for (long long i = 0; i < 2000000000LL; i++) {   // 2 billion — note: long long, not int {   // generous cap; combined ROM is long
+        gb.step();
+    }
+}
 
 int main(int argc, char* argv[]) {
     if (argc < 2) {
         std::cerr << "Usage: gbemu <rom-path>\n";
         return 1;
     }
-    runGameboyDoctor(argv[1]);
+    runRom(argv[1]);
     return 0;
 }
