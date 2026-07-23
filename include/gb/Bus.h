@@ -10,6 +10,7 @@ class IERegister;
 class OAM;
 class Timer;
 class PPU;
+class Joypad;
 
 class Bus {
 public:
@@ -21,7 +22,8 @@ public:
             IERegister* ieRegister,
             OAM* oam,
             Timer* timer,
-            PPU* ppu);
+            PPU* ppu,
+            Joypad* joypad);
 
     uint8_t read(uint16_t address);
     void write(uint16_t address, uint8_t value);
@@ -40,5 +42,6 @@ private:
     OAM* _oam;
     Timer* _timer;
     PPU* _ppu;
+    Joypad* _joypad;
     uint64_t _cycles; //uint64_t to avoid overflow when counting cycles, potentially billions of cycles in a long-running emulation
 };

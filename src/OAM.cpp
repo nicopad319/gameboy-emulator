@@ -7,16 +7,16 @@ OAM::OAM(PPU* ppu) : _ppu(ppu) {
 }
 
 uint8_t OAM::read(uint16_t address) {
-    // --- OAM LOCKING LOGIC ---
-    if (_ppu->getCurrentMode() == 2 || _ppu->getCurrentMode() == 3) {
-        return 0xFF; // CPU reads 0xFF when OAM is locked during Mode 2 or 3
-    }
+    if (_ppu->isOamLocked()) return 0xFF;
     return _oam.at(address - 0xFE00);
 }
 
 void OAM::write(uint16_t address, uint8_t value) {
-    if (_ppu->getCurrentMode() == 2 || _ppu->getCurrentMode() == 3) {
-        return; // CPU cannot write to OAM when it is locked during Mode 2 or 3
-    }
+    if (_ppu->isOamLocked()) return;
     _oam.at(address - 0xFE00) = value;
 }
+
+uint8_t OAM::readRaw(uint16_t address) const { return _oam.at(address - 0xFE00); }
+
+void    OAM::writeRaw(uint16_t address, uint8_t value) { _oam.at(address - 0xFE00) = value; }
+

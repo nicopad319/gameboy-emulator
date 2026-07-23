@@ -4,6 +4,8 @@
 
 
 class VRAM;
+class OAM;
+
 
 class PPU {
 public:
@@ -22,6 +24,9 @@ public:
 
     bool isVramLocked() const;
 
+    void connectOAM(OAM* oam) { _oam = oam; }
+    bool isOamLocked() const;
+
 private:
     int _dotCounter = 0;
     int _ly = 0;
@@ -39,4 +44,10 @@ private:
 
     VRAM* _vram = nullptr;
     std::array<uint8_t, 160 * 144> _framebuffer{};   // {} zero-initializes
+
+    void renderSprites();
+    OAM*    _oam  = nullptr;
+    uint8_t _obp0 = 0;   // 0xFF48
+    uint8_t _obp1 = 0;   // 0xFF49
+
 };

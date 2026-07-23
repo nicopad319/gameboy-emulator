@@ -3,10 +3,11 @@
 GameBoy::GameBoy()
         : _vram(&_ppu), // Initialize VRAM with a pointer to PPU
           _oam(&_ppu), // Initialize OAM with a pointer to PPU
-          _bus(&_cartridge, &_wram, &_ioRegisters, &_vram, &_hram, &_ieRegister, &_oam, &_timer, &_ppu), // Initialize Bus with pointers to all components
+          _bus(&_cartridge, &_wram, &_ioRegisters, &_vram, &_hram, &_ieRegister, &_oam, &_timer, &_ppu, &_joypad), // Initialize Bus with pointers to all components
           _cpu(_bus)
         {
             _ppu.connectVRAM(&_vram);
+            _ppu.connectOAM(&_oam);
         }
 
 
@@ -39,6 +40,7 @@ int GameBoy::step() {
     uint8_t ppuIrq = _ppu.tick(cycles);
     if (ppuIrq & 0x01) {
         requestInterrupt(0);   // VBlank
+        _frameReady = true; //a full frame has been rendered
     }
     if (ppuIrq & 0x02) { 
         requestInterrupt(1);   // STAT (nothing sets this yet)
@@ -48,4 +50,11 @@ int GameBoy::step() {
 
 void GameBoy::enableCpuLogging() {
     _cpu.enableLogging();
+}
+
+void GameBoy::runFrame() {
+    _frameReady = false;
+    while (!_frameReady) {
+        step();
+    }
 }

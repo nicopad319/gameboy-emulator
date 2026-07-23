@@ -10,6 +10,7 @@
 #include "WRAM.h"
 #include "CPU.h"
 #include "Timer.h"
+#include "Joypad.h"
 #include <string>
 #include <cstdint>
 
@@ -31,6 +32,10 @@ public:
 
     const auto& getFramebuffer() const { return _ppu.getFramebuffer(); } 
 
+    void runFrame();
+
+    void setButton(Joypad::Button b, bool pressed) { _joypad.setButton(b, pressed); }
+
 
 private:
     PPU _ppu; //depends on nothing (is a stub) must be declared first
@@ -44,4 +49,7 @@ private:
     Timer _timer;
     Bus _bus; //depends on everything so must be declared last
     CPU _cpu; //holds a bus so must come after bus
+    Joypad _joypad;
+
+    bool _frameReady = false;
 };

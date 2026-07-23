@@ -119,13 +119,14 @@ struct TestSystem {
     Timer _timer;
     Bus _bus;
     CPU _cpu;
+    Joypad _joypad;
 
     TestSystem()          // ← inside the braces
         : _vram(&_ppu),
           _oam(&_ppu),
-          _bus(&_cartridge, &_wram, &_ioRegisters, &_vram, &_hram, &_ieRegister, &_oam, &_timer, &_ppu),
+          _bus(&_cartridge, &_wram, &_ioRegisters, &_vram, &_hram, &_ieRegister, &_oam, &_timer, &_ppu, &_joypad),
           _cpu(_bus)
-    {_ppu.connectVRAM(&_vram);}
+    {_ppu.connectVRAM(&_vram); _ppu.connectOAM(&_oam);}
 
     int step() {
         int cycles = _cpu.step();
@@ -1091,14 +1092,77 @@ void writeFramebufferPPM(const std::array<uint8_t, 160 * 144>& fb, const std::st
     }
 }
 
+#include <SDL.h>
+
 void runRom(const std::string& romPath) {
     GameBoy gb;
     gb.loadROM(romPath);
-    // NO enableCpuLogging() — we want serial output, not a state log
-    for (long long i = 0; i < 50'000'000LL; i++) {
-        gb.step();
+
+    if (SDL_Init(SDL_INIT_VIDEO) != 0) {
+        std::cerr << "SDL_Init failed: " << SDL_GetError() << "\n";
+        return;
     }
-    writeFramebufferPPM(gb.getFramebuffer(), "frame.ppm");
+
+    const int SCALE = 4;
+    SDL_Window* window = SDL_CreateWindow("gbemu",
+        SDL_WINDOWPOS_CENTERED, SDL_WINDOWPOS_CENTERED,
+        160 * SCALE, 144 * SCALE, 0);
+    SDL_Renderer* renderer = SDL_CreateRenderer(window, -1,
+        SDL_RENDERER_ACCELERATED | SDL_RENDERER_PRESENTVSYNC);
+    SDL_Texture* texture = SDL_CreateTexture(renderer,
+        SDL_PIXELFORMAT_RGB24, SDL_TEXTUREACCESS_STREAMING, 160, 144);
+
+    static const uint8_t palette[4][3] = {
+        {155, 188, 15}, {139, 172, 15}, {48, 98, 48}, {15, 56, 15}
+    };
+
+    bool running = true;
+    while (running) {
+        SDL_Event e;
+        while (SDL_PollEvent(&e)) {
+            if (e.type == SDL_QUIT) {
+                running = false;
+            } else if (e.type == SDL_KEYDOWN || e.type == SDL_KEYUP) {
+                bool down = (e.type == SDL_KEYDOWN);
+                if (down && e.key.keysym.sym == SDLK_s) {
+                    writeFramebufferPPM(gb.getFramebuffer(), "frame.ppm");
+                }
+                Joypad::Button b = Joypad::Button::A; bool valid = true;
+                switch (e.key.keysym.sym) {
+                    case SDLK_RIGHT:     b = Joypad::Button::Right;  break;
+                    case SDLK_LEFT:      b = Joypad::Button::Left;   break;
+                    case SDLK_UP:        b = Joypad::Button::Up;     break;
+                    case SDLK_DOWN:      b = Joypad::Button::Down;   break;
+                    case SDLK_z:         b = Joypad::Button::A;      break;
+                    case SDLK_x:         b = Joypad::Button::B;      break;
+                    case SDLK_RETURN:    b = Joypad::Button::Start;  break;
+                    case SDLK_BACKSPACE: b = Joypad::Button::Select; break;
+                    default: valid = false; break;
+                }
+                if (valid) gb.setButton(b, down);
+            }   
+        }       
+
+        gb.runFrame();
+
+        const auto& fb = gb.getFramebuffer();
+        static uint8_t rgb[160 * 144 * 3];
+        for (int i = 0; i < 160 * 144; ++i) {
+            const uint8_t* c = palette[fb[i] & 0x03];
+            rgb[i * 3 + 0] = c[0];
+            rgb[i * 3 + 1] = c[1];
+            rgb[i * 3 + 2] = c[2];
+        }
+        SDL_UpdateTexture(texture, nullptr, rgb, 160 * 3);
+        SDL_RenderClear(renderer);
+        SDL_RenderCopy(renderer, texture, nullptr, nullptr);
+        SDL_RenderPresent(renderer);
+    }          
+
+    SDL_DestroyTexture(texture);
+    SDL_DestroyRenderer(renderer);
+    SDL_DestroyWindow(window);
+    SDL_Quit();
 }
 
 int main(int argc, char* argv[]) {

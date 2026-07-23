@@ -1,5 +1,6 @@
 #include "PPU.h"
 #include "VRAM.h"
+#include "OAM.h"
 
 uint8_t PPU::getCurrentMode() {
     return static_cast<uint8_t>(_mode);
@@ -76,7 +77,9 @@ uint8_t PPU::readRegister(uint16_t addr) const {
         case 0xFF44: return static_cast<uint8_t>(_ly);   // LY is produced by the PPU
         case 0xFF45: return _lyc;
         case 0xFF47: return _bgp;
-        default:     return 0xFF;                        // other PPU regs not wired yet
+        case 0xFF48: return _obp0;
+        case 0xFF49: return _obp1;
+        default:     return 0xFF;                  
     }
 }
 
@@ -89,6 +92,8 @@ void PPU::writeRegister(uint16_t addr, uint8_t value) {
         case 0xFF44: /* LY read-only — writes ignored */ break;
         case 0xFF45: _lyc  = value; break;
         case 0xFF47: _bgp  = value; break;
+        case 0xFF48: _obp0 = value; break;
+        case 0xFF49: _obp1 = value; break;
         default: break;
     }
 }
@@ -133,8 +138,60 @@ void PPU::renderScanline() {
         // 5. Store into the framebuffer.
         _framebuffer[static_cast<size_t>(_ly) * 160 + x] = shade;
     }
+    renderSprites();
 }
 
 bool PPU::isVramLocked() const {
-    return (_lcdc & 0x80) && _mode == Mode::Drawing;   // LCD on AND actively drawing
+    return false;
+    // return (_lcdc & 0x80) && _mode == Mode::Drawing;   // LCD on AND actively drawing
+}
+
+bool PPU::isOamLocked() const {
+    return (_lcdc & 0x80) && (_mode == Mode::OamScan || _mode == Mode::Drawing);
+}
+
+void PPU::renderSprites() {
+    if (!(_lcdc & 0x02) || !_oam) return;         // OBJ disabled or no OAM connected
+
+    int height = (_lcdc & 0x04) ? 16 : 8;         // LCDC bit 2: 8x16 mode
+
+    // Draw high OAM indices first so index 0 ends up on top (simplified priority).
+    for (int i = 39; i >= 0; --i) {
+        uint16_t base = static_cast<uint16_t>(0xFE00 + i * 4);
+        int spriteY   = _oam->readRaw(static_cast<uint16_t>(base + 0)) - 16;
+        int spriteX   = _oam->readRaw(static_cast<uint16_t>(base + 1)) - 8;
+        uint8_t tileIndex = _oam->readRaw(static_cast<uint16_t>(base + 2));
+        uint8_t attrs     = _oam->readRaw(static_cast<uint16_t>(base + 3));
+
+        if (_ly < spriteY || _ly >= spriteY + height) continue;   // not on this line
+
+        bool yFlip = attrs & 0x40;
+        bool xFlip = attrs & 0x20;
+        uint8_t palette = (attrs & 0x10) ? _obp1 : _obp0;
+
+        int row = _ly - spriteY;
+        if (yFlip) row = height - 1 - row;
+
+        uint8_t tile = tileIndex;
+        if (height == 16) {                        // 8x16: bit 0 ignored, row picks top/bottom
+            tile = tileIndex & 0xFE;
+            if (row >= 8) { tile += 1; row -= 8; }
+        }
+
+        uint16_t addr = 0x8000 + tile * 16;        // sprites always use 0x8000 unsigned
+        uint8_t low  = _vram->readRaw(static_cast<uint16_t>(addr + row * 2));
+        uint8_t high = _vram->readRaw(static_cast<uint16_t>(addr + row * 2 + 1));
+
+        for (int px = 0; px < 8; ++px) {
+            int bit = xFlip ? px : (7 - px);
+            uint8_t colorIndex = static_cast<uint8_t>((((high >> bit) & 1) << 1) | ((low >> bit) & 1));
+            if (colorIndex == 0) continue;         // 0 = transparent for sprites
+
+            int screenX = spriteX + px;
+            if (screenX < 0 || screenX >= 160) continue;
+
+            uint8_t shade = (palette >> (colorIndex * 2)) & 0x03;
+            _framebuffer[_ly * 160 + screenX] = shade;
+        }
+    }
 }

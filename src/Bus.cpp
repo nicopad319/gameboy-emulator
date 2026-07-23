@@ -8,6 +8,7 @@
 #include "OAM.h"
 #include "Timer.h"
 #include "PPU.h"
+#include "Joypad.h"
 
 
 Bus::Bus(Cartridge* cartridge, 
@@ -18,7 +19,8 @@ Bus::Bus(Cartridge* cartridge,
            IERegister* ieRegister,
            OAM* oam,
            Timer* timer,
-           PPU* ppu)
+           PPU* ppu,
+           Joypad* joypad)
             : _cartridge(cartridge),
             _wram(wram),
             _ioRegisters(ioRegisters),
@@ -28,6 +30,7 @@ Bus::Bus(Cartridge* cartridge,
             _oam(oam),
             _timer(timer),
             _ppu(ppu),
+            _joypad(joypad),
             _cycles(0) // Initialize cycles to 0
 {
     // Constructor body can be empty since we are using an initializer list
@@ -50,6 +53,9 @@ uint8_t Bus::read(uint16_t address) {
     } else if (address < 0xFF00) { //unusable memory
         return 0xFF;
     } else if (address < 0xFF80) {
+        if (address == 0xFF00) {
+            return _joypad->read();
+        }
         if (address >= 0xFF04 && address <= 0xFF07) {
             return _timer->read(address);
         }
@@ -80,9 +86,19 @@ void Bus::write(uint16_t address, uint8_t value) {
     } else if (address < 0xFF00) { //unusable memory
         return;
     } else if (address < 0xFF80) {
+        if (address == 0xFF00) {
+            _joypad->write(value);
+            return; 
+        }
         if (address >= 0xFF04 && address <= 0xFF07) {
             _timer->write(address, value);
-        } else if (address >= 0xFF40 && address <= 0xFF4B) {
+        } else if(address == 0xFF46) {
+            uint16_t src = static_cast<uint16_t>(value) << 8;
+            for (int i = 0; i < 160; ++i) {
+                _oam->writeRaw(static_cast<uint16_t>(0xFE00 + i), read(static_cast<uint16_t>(src + i)));
+            }
+        }
+        else if (address >= 0xFF40 && address <= 0xFF4B) {
         _ppu->writeRegister(address, value);
         } else {
         _ioRegisters->write(address, value);
