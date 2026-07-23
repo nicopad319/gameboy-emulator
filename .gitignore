@@ -14,3 +14,5 @@ build/
 *.pdb
 *.exe
 *.ilk
+docs/
+test_roms/Tetris*

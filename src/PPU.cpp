@@ -142,12 +142,17 @@ void PPU::renderScanline() {
 }
 
 bool PPU::isVramLocked() const {
+    // Deliberately disabled: our timing is instruction-granular with a fixed mode-3
+    // length, so strict mode-3 locking drops legitimate writes. No target game relies
+    // on VRAM being inaccessible during rendering, so we keep VRAM always accessible.
     return false;
-    // return (_lcdc & 0x80) && _mode == Mode::Drawing;   // LCD on AND actively drawing
 }
 
 bool PPU::isOamLocked() const {
-    return (_lcdc & 0x80) && (_mode == Mode::OamScan || _mode == Mode::Drawing);
+    // Deliberately disabled: our timing is instruction-granular with a fixed mode-3
+    // length, so strict mode-3 locking drops legitimate writes. No target game relies
+    // on VRAM being inaccessible during rendering, so we keep VRAM always accessible.
+    return false;
 }
 
 void PPU::renderSprites() {
