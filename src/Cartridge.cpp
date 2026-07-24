@@ -10,7 +10,15 @@ bool Cartridge::load(const std::string& path) {
     _rom.clear();
     _cartridgeType = 0;
     _title.clear();
-    //_ram.clear(); uncomment once implemented
+    _rom.clear();
+    _ram.clear();
+    _cartridgeType = 0;
+    _title.clear();
+    _mapper = Mapper::None;
+    _ramEnabled = false;
+    _romBankReg = 1;
+    _ramBankReg = 0;
+    _mode = 0;
 
     // 1. open the file in binary mode
     std::ifstream file(path, std::ios::binary); //std::ios::binary to read the file as binary data
@@ -49,9 +57,33 @@ bool Cartridge::load(const std::string& path) {
     }
 
     // 4.5 verify that the cartridge type is supported (for now, only support 0x00)
-    if (_cartridgeType != 0x00 && _cartridgeType != 0x01) { // 0x01 temporarily added to support the 01-special.gb test ROM, which is a MBC1 cartridge
-        std::cerr << "Unsupported cartridge type: 0x" << std::hex << static_cast<int>(_cartridgeType) << std::endl;
-        return false;
+    switch (_cartridgeType) {
+        case 0x00:
+            _mapper = Mapper::None;
+            break;
+        case 0x01: case 0x02: case 0x03:
+            _mapper = Mapper::MBC1;
+            break;
+        case 0x0F: case 0x10: case 0x11: case 0x12: case 0x13:
+            _mapper = Mapper::MBC3;
+            break;
+        default:
+            std::cerr << "Unsupported cartridge type: 0x" << std::hex
+                      << static_cast<int>(_cartridgeType) << std::endl;
+            return false;
+    }
+
+    // allocate external RAM based on the RAM-size byte at 0x0149
+    uint32_t ramSize = 0;
+    switch (_rom[0x0149]) {
+        case 0x02: ramSize = 8   * 1024; break;   // 1 bank
+        case 0x03: ramSize = 32  * 1024; break;   // 4 banks
+        case 0x04: ramSize = 128 * 1024; break;   // 16 banks
+        case 0x05: ramSize = 64  * 1024; break;   // 8 banks
+        default:   ramSize = 0;          break;
+    }
+    if (ramSize > 0) {
+        _ram.assign(ramSize, 0);
     }
 
     return true; // successfully loaded and parsed the cartridge
@@ -59,31 +91,65 @@ bool Cartridge::load(const std::string& path) {
 
 
 uint8_t Cartridge::read(uint16_t address) {
-    if (address < 0x8000) { // ROM area (0x0000 - 0x7FFF)
-        if (address < _rom.size()) { // check if the address is within the bounds of the loaded ROM
-            return _rom.at(address); // read from the ROM vector
-        } else {
-            return 0xFF; // return 0xFF for out-of-bounds reads (real hardware behavior)
-        }
-    } 
-
-    else { //RAM area (0xA000 - 0xBFFF)
-        if (_ram.empty()) {
-            return 0xFF; // real hardware behavior is to return 0xFF if RAM is not present
-        }
-        //TODO: implement RAM banking and MBC support for cartridges that have RAM
-        return 0xFF; // for now, return 0xFF for any RAM reads (since we don't have RAM implemented yet)
+    if (address < 0x4000) {                                   // fixed ROM bank 0
+        return address < _rom.size() ? _rom[address] : 0xFF;
     }
+    if (address < 0x8000) {                                   // switchable ROM bank
+        uint32_t offset = currentRomBank() * 0x4000u + (address - 0x4000u);
+        return offset < _rom.size() ? _rom[offset] : 0xFF;
+    }
+    // external RAM (0xA000-0xBFFF)
+    if (_ramEnabled && !_ram.empty()) {
+        uint32_t offset = currentRamBank() * 0x2000u + (address - 0xA000u);
+        return offset < _ram.size() ? _ram[offset] : 0xFF;
+    }
+    return 0xFF;
 }
 
 void Cartridge::write(uint16_t address, uint8_t value) {
-    if (address < 0x8000) { // ROM area (0x0000 - 0x7FFF)
-        // writing to ROM is not allowed, ignore the write
-        return;
-    } 
-    else { //RAM area (0xA000 - 0xBFFF)
-        if (!_ram.empty()) {
-            _ram.at(address - 0xA000) = value; // write to the RAM vector (if present)
+    // external RAM write (all mappers)
+    if (address >= 0xA000 && address < 0xC000) {
+        if (_ramEnabled && !_ram.empty()) {
+            uint32_t offset = currentRamBank() * 0x2000u + (address - 0xA000u);
+            if (offset < _ram.size()) _ram[offset] = value;
         }
+        return;
+    }
+
+    if (_mapper == Mapper::None) return;   // ROM-only: ROM writes ignored
+
+    // MBC control-register writes (ROM address range)
+    if (address < 0x2000) {
+        _ramEnabled = ((value & 0x0F) == 0x0A);
+    } else if (address < 0x4000) {
+        _romBankReg = value;               // helpers mask per-mapper
+    } else if (address < 0x6000) {
+        _ramBankReg = value;
+    } else if (address < 0x8000) {
+        _mode = value & 0x01;              // MBC1 only; MBC3 RTC-latch (ignored)
+    }
+}
+
+uint32_t Cartridge::currentRomBank() const {
+    switch (_mapper) {
+        case Mapper::MBC3: {
+            uint32_t b = _romBankReg & 0x7F;   // 7-bit bank
+            return b == 0 ? 1 : b;             // bank 0 -> 1
+        }
+        case Mapper::MBC1: {
+            uint32_t low = _romBankReg & 0x1F; // 5-bit
+            if (low == 0) low = 1;             // 0 -> 1 quirk
+            return ((_ramBankReg & 0x03) << 5) | low;
+        }
+        default:
+            return 1;                          // ROM-only: 0x4000-0x7FFF is bank 1
+    }
+}
+
+uint32_t Cartridge::currentRamBank() const {
+    switch (_mapper) {
+        case Mapper::MBC3: return _ramBankReg & 0x03;
+        case Mapper::MBC1: return (_mode == 1) ? (_ramBankReg & 0x03) : 0;
+        default:           return 0;
     }
 }

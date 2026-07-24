@@ -16,3 +16,4 @@ build/
 *.ilk
 docs/
 test_roms/Tetris*
+test_roms/Pokemon*

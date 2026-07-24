@@ -50,4 +50,11 @@ private:
     uint8_t _obp0 = 0;   // 0xFF48
     uint8_t _obp1 = 0;   // 0xFF49
 
+
+    void renderWindow();
+    uint8_t _wy = 0;              // 0xFF4A
+    uint8_t _wx = 0;              // 0xFF4B
+    int     _windowLineCounter = 0;
+
+
 };

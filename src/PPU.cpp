@@ -50,6 +50,7 @@ uint8_t PPU::tick(int cycles) {
             if (_ly == 154) {
                 _ly = 0;
                 _mode = Mode::OamScan;
+                _windowLineCounter = 0; // window counter restarts each frame
             }
         }
         break;
@@ -79,6 +80,8 @@ uint8_t PPU::readRegister(uint16_t addr) const {
         case 0xFF47: return _bgp;
         case 0xFF48: return _obp0;
         case 0xFF49: return _obp1;
+        case 0xFF4A: return _wy;
+        case 0xFF4B: return _wx;
         default:     return 0xFF;                  
     }
 }
@@ -94,6 +97,8 @@ void PPU::writeRegister(uint16_t addr, uint8_t value) {
         case 0xFF47: _bgp  = value; break;
         case 0xFF48: _obp0 = value; break;
         case 0xFF49: _obp1 = value; break;
+        case 0xFF4A: _wy = value; break;
+        case 0xFF4B: _wx = value; break;
         default: break;
     }
 }
@@ -138,6 +143,7 @@ void PPU::renderScanline() {
         // 5. Store into the framebuffer.
         _framebuffer[static_cast<size_t>(_ly) * 160 + x] = shade;
     }
+    renderWindow(); //window sits on top of the background, but sprites sit on top of the window:
     renderSprites();
 }
 
@@ -199,4 +205,42 @@ void PPU::renderSprites() {
             _framebuffer[_ly * 160 + screenX] = shade;
         }
     }
+}
+
+void PPU::renderWindow() {
+    if (!(_lcdc & 0x20)) return;          // window disabled
+    if (!(_lcdc & 0x01)) return;          // on DMG, window only shows if BG is on
+    if (!_vram || _ly < _wy) return;      // window hasn't reached this line yet
+
+    uint16_t winMapBase    = (_lcdc & 0x40) ? 0x9C00 : 0x9800;   // bit 6
+    bool     unsignedTiles = (_lcdc & 0x10) != 0;                // bit 4 (shared with BG)
+
+    uint8_t tileRow  = static_cast<uint8_t>(_windowLineCounter / 8);
+    uint8_t pixelRow = static_cast<uint8_t>(_windowLineCounter % 8);
+
+    for (int x = 0; x < 160; ++x) {
+        int winX = x - (static_cast<int>(_wx) - 7);   // window's left edge is at WX-7
+        if (winX < 0) continue;                       // left of the window: keep background
+
+        uint8_t tileCol  = static_cast<uint8_t>(winX / 8);
+        uint8_t pixelCol = static_cast<uint8_t>(winX % 8);
+
+        uint16_t mapAddr   = static_cast<uint16_t>(winMapBase + tileRow * 32 + tileCol);
+        uint8_t  tileIndex = _vram->readRaw(mapAddr);
+
+        uint16_t tileAddr;
+        if (unsignedTiles) tileAddr = static_cast<uint16_t>(0x8000 + tileIndex * 16);
+        else               tileAddr = static_cast<uint16_t>(0x9000 + static_cast<int8_t>(tileIndex) * 16);
+
+        uint8_t low  = _vram->readRaw(static_cast<uint16_t>(tileAddr + pixelRow * 2));
+        uint8_t high = _vram->readRaw(static_cast<uint16_t>(tileAddr + pixelRow * 2 + 1));
+        uint8_t rowPixels[8];
+        decodeTileRow(low, high, rowPixels);
+        uint8_t colorIndex = rowPixels[pixelCol];
+
+        uint8_t shade = (_bgp >> (colorIndex * 2)) & 0x03;
+        _framebuffer[static_cast<size_t>(_ly) * 160 + x] = shade;
+    }
+
+    _windowLineCounter++;   // advance only on lines where the window drew
 }

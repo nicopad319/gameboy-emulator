@@ -36,6 +36,10 @@ public:
 
     void setButton(Joypad::Button b, bool pressed) { _joypad.setButton(b, pressed); }
 
+    uint16_t getPC() const { return _cpu.getPC(); }
+
+    uint8_t peek(uint16_t a) { return _bus.read(a); }
+
 
 private:
     PPU _ppu; //depends on nothing (is a stub) must be declared first
