@@ -18,6 +18,8 @@ class GameBoy {
 public:
     GameBoy(); //constructs everything (is the root) so doesn't need to take in any parameters
     bool loadROM(const std::string& path);
+    
+    bool loadFromMemory(const uint8_t* data, size_t size);
 
     uint8_t read(uint16_t address);
     void write(uint16_t address, uint8_t value);

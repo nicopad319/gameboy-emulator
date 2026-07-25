@@ -8,6 +8,7 @@ public:
     uint8_t read(uint16_t address);
     void write(uint16_t address, uint8_t value);
     bool load(const std::string& path); // Load the cartridge data from a file
+    bool loadFromMemory(const uint8_t* data, size_t size);
 
 private:
     std::vector<uint8_t> _rom; // Vector to hold the ROM data loaded from the cartridge file
@@ -24,4 +25,8 @@ private:
     uint8_t _romBankReg  = 1;   // raw value written to 0x2000-0x3FFF
     uint8_t _ramBankReg  = 0;   // raw value written to 0x4000-0x5FFF
     uint8_t _mode        = 0;   // MBC1 banking mode (0x6000-0x7FFF)
+
+    void resetState(); 
+    bool parseHeader();
+
 };

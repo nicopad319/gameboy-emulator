@@ -58,3 +58,7 @@ void GameBoy::runFrame() {
         step();
     }
 }
+
+bool GameBoy::loadFromMemory(const uint8_t* data, size_t size) {
+    return _cartridge.loadFromMemory(data, size);
+}

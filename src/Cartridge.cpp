@@ -1,12 +1,9 @@
 #include "Cartridge.h"
 #include <fstream>
 #include <iostream>
+#include <vector>
 
-bool Cartridge::load(const std::string& path) {
-    // open binary stream, size to the file, read bytes into _rom, then parse header for cartridge type and title
-
-
-    // 0. clear any existing data in _rom and reset cartridge type and title (so function is cleanly recallable)
+void Cartridge::resetState() {
     _rom.clear();
     _cartridgeType = 0;
     _title.clear();
@@ -19,32 +16,9 @@ bool Cartridge::load(const std::string& path) {
     _romBankReg = 1;
     _ramBankReg = 0;
     _mode = 0;
+}
 
-    // 1. open the file in binary mode
-    std::ifstream file(path, std::ios::binary); //std::ios::binary to read the file as binary data
-    if (!file.is_open()) {
-        return false; // failed to open file
-    }
-
-    // 2. determine the size of the file and resize _rom accordingly
-    file.seekg(0, std::ios::end); // move to the end of the file
-    std::streamsize size = file.tellg(); // get the current position (which is the size of the file)
-    file.seekg(0, std::ios::beg); // move back to the beginning
-
-    if (size < 0x0148) { // ROM needs to be at least 0x0148 bytes long to contain the cartridge type and title (0x0000 - 0x0147)
-        return false; // invalid ROM size
-    }
-
-    _rom.resize(size); // resize the vector to hold the file data
-
-
-    // 3. read the file data into the vector
-    file.read(reinterpret_cast<char*>(_rom.data()), size); // read the file data into the vector]
-    if (file.gcount() != size) { // check if the number of bytes read matches the expected size
-        return false; // failed to read the entire file
-    }
-    file.close();
-
+bool Cartridge::parseHeader() {
     // 4. parse the cartridge header to determine the cartridge type and title
     
     _cartridgeType = _rom[0x0147]; // cartridge type is at 0x0147
@@ -82,11 +56,58 @@ bool Cartridge::load(const std::string& path) {
         case 0x05: ramSize = 64  * 1024; break;   // 8 banks
         default:   ramSize = 0;          break;
     }
+
     if (ramSize > 0) {
         _ram.assign(ramSize, 0);
     }
+    return true;
+}
 
-    return true; // successfully loaded and parsed the cartridge
+
+bool Cartridge::load(const std::string& path) {
+    // open binary stream, size to the file, read bytes into _rom, then parse header for cartridge type and title
+
+
+    // 0. clear any existing data in _rom and reset cartridge type and title (so function is cleanly recallable)
+    resetState();
+
+    // 1. open the file in binary mode
+    std::ifstream file(path, std::ios::binary); //std::ios::binary to read the file as binary data
+    if (!file.is_open()) {
+        return false; // failed to open file
+    }
+
+    // 2. determine the size of the file and resize _rom accordingly
+    file.seekg(0, std::ios::end); // move to the end of the file
+    std::streamsize size = file.tellg(); // get the current position (which is the size of the file)
+    file.seekg(0, std::ios::beg); // move back to the beginning
+
+    if (size < 0x0148) { // ROM needs to be at least 0x0148 bytes long to contain the cartridge type and title (0x0000 - 0x0147)
+        return false; // invalid ROM size
+    }
+
+    _rom.resize(size); // resize the vector to hold the file data
+
+
+    // 3. read the file data into the vector & parse
+    file.read(reinterpret_cast<char*>(_rom.data()), size); // read the file data into the vector]
+    if (file.gcount() != size) { // check if the number of bytes read matches the expected size
+        return false; // failed to read the entire file
+    }
+    file.close();
+
+    if (parseHeader()) {return true;}
+    return false; // successfully loaded and parsed the cartridge
+}
+
+bool Cartridge::loadFromMemory(const uint8_t* data, size_t size) {
+    resetState();
+    if (size < 0x0148) { // ROM needs to be at least 0x0148 bytes long to contain the cartridge type and title (0x0000 - 0x0147)
+        return false; // invalid ROM size
+    }
+    _rom.assign(data, data + size);
+    if (parseHeader()) {return true;}
+    return false;
 }
 
 
